@@ -1,0 +1,35 @@
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Temp
+*.tmp
+*.log
+*.bak
+
+# Secrets
+.env
+.env.local
+.env.*.local
+secrets.*
+credentials.*
+
+# Rust (crxhub-cli)
+target/
+Cargo.lock
+*.rs.bk
+
+# Scripts output
+**/scripts/
+
+# real-browser
+*.lock
+.chrome-cdp-profile/
