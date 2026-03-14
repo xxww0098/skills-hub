@@ -28,7 +28,7 @@ Cargo.lock
 *.rs.bk
 
 # Scripts output (build artifacts in develop directory)
-skills-develop/**/scripts/
+develop/**/scripts/
 
 # real-browser
 *.lock

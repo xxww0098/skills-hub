@@ -6,8 +6,8 @@ Personal skill repository for agent automation.
 
 | Category | Skill | Description | Status |
 |:--------:|:------|:------------|:------:|
-| 🤖 Automation | [real-browser](./skills-develop/real-browser) | Browser automation using real Chrome with CDP | ✅ Active |
-| 🔧 Extension | [crxhub-cli](./skills-develop/crxhub-cli) | Manage browser extensions from GitHub Releases | ✅ Active |
+| 🤖 Automation | [real-browser](./develop/real-browser) | Browser automation using real Chrome with CDP | ✅ Active |
+| 🔧 Extension | [crxhub-cli](./develop/crxhub-cli) | Manage browser extensions from GitHub Releases | ✅ Active |
 
 ## Installation
 
