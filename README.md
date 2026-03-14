@@ -11,8 +11,6 @@ Personal skill repository for agent automation.
 
 ## Installation
 
-Skills are automatically loaded by compatible AI agents.
-
-## Contributing
-
-See individual skill directories for usage details.
+```bash
+npx skills add https://github.com/xxww0098/skills-hub
+```
