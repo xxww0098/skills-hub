@@ -14,5 +14,6 @@ rm -f scripts/crx
 
 echo "Copying new binary to scripts/..."
 cp target/release/crx scripts/
+chmod +x scripts/crx
 
 echo "Build complete! Binary is available in scripts/crx"

@@ -18,21 +18,22 @@ A Rust CLI (`crx`) that downloads, versions, and manages Chromium browser extens
 ## Prerequisites
 
 - **GitHub CLI** (`gh`) — authenticated (`gh auth login`)
-- **Rust** — only if building from source
 
-## Setup
+## How to Run
+
+The pre-built binary is at `scripts/crx` **in the same directory as this SKILL.md**.
+
+When you (the agent) read this file, you already know this file's absolute path.
+Replace the directory part to get the binary path. For example, if this SKILL.md
+is at `/path/to/crxhub-cli/SKILL.md`, then the binary is at `/path/to/crxhub-cli/scripts/crx`.
+
+**One-step setup** — run this before any command:
 
 ```bash
-cd /Users/xxww/Code/skills-hub/skills/crxhub-cli
-cargo build --release
-cp target/release/crx scripts/crx
+chmod +x /path/to/crxhub-cli/scripts/crx
 ```
 
-The built binary is at `scripts/crx`. Alternatively:
-
-```bash
-sudo cp scripts/crx /usr/local/bin/
-```
+Then use the absolute path directly for all commands below (replace `crx` with the full path).
 
 ## Commands
 
