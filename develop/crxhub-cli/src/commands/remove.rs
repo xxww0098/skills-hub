@@ -7,6 +7,12 @@ pub fn run(repo: &str) -> Result<()> {
     let repo = repo::normalize_repo(repo)?;
 
     let repo_path = config::get_repo_path(&repo, None)?;
+    let was_installed = repo_path.exists() || config::get_repo(&repo)?.is_some();
+
+    if !was_installed {
+        anyhow::bail!("{} is not installed", repo);
+    }
+
     if repo_path.exists() {
         fs::remove_dir_all(&repo_path)?;
     }

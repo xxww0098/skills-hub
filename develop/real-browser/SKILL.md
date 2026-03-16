@@ -120,7 +120,8 @@ agent-browser --cdp 9851 tab <index>   # switch to the correct tab
 ## Troubleshooting
 
 ```bash
-lsof -iTCP:9851 -sTCP:LISTEN    # find process on port
+lsof -iTCP:9851 -sTCP:LISTEN    # find process on port (macOS / most Linux)
+ss -tlnp | grep :9851            # alternative if lsof is unavailable (Linux)
 kill <pid>                       # free the port
 rm -f /tmp/.real_browser.lock    # remove stale lock
 scripts/real_browser.sh          # re-launch fresh

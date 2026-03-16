@@ -1,4 +1,5 @@
 pub mod cleanup;
+pub mod info;
 pub mod install;
 pub mod list;
 pub mod outdate;

@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::fs;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
@@ -126,6 +127,14 @@ where
             }
             let mut outfile = fs::File::create(&outpath)?;
             std::io::copy(&mut file, &mut outfile)?;
+
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                if let Some(mode) = file.unix_mode() {
+                    fs::set_permissions(&outpath, fs::Permissions::from_mode(mode))?;
+                }
+            }
         }
     }
 
@@ -201,7 +210,7 @@ fn resolve_i18n_field(ext_root: &Path, value: &str, default_locale: &Option<Stri
     for locale in &candidates {
         let messages_path = locales_dir.join(locale).join("messages.json");
         if let Ok(content) = fs::read_to_string(&messages_path) {
-            if let Ok(messages) = serde_json::from_str::<std::collections::HashMap<String, I18nMessage>>(&content) {
+            if let Ok(messages) = serde_json::from_str::<HashMap<String, I18nMessage>>(&content) {
                 // Try exact key first, then case-insensitive
                 if let Some(msg) = messages.get(msg_key) {
                     return msg.message.clone();

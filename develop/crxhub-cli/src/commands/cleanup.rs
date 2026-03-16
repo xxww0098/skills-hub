@@ -33,12 +33,13 @@ pub fn run(repo: &str, keep: usize) -> Result<()> {
         .and_then(|i| i.active_version.as_deref());
     let versions = extension::get_local_versions(repo)?;
 
-    let removable: Vec<_> = versions
-        .iter()
+    let inactive: Vec<String> = versions
+        .into_iter()
         .filter(|v| active_version != Some(v.as_str()))
         .collect();
+    let keep_inactive = keep.saturating_sub(1); // 1 slot reserved for active
 
-    if removable.is_empty() || versions.len() <= keep {
+    if inactive.len() <= keep_inactive {
         return Ok(());
     }
 
@@ -52,15 +53,10 @@ pub fn run(repo: &str, keep: usize) -> Result<()> {
         .dimmed()
     );
 
-    let sorted = sort_versions_by_recency(repo, versions);
-    let to_delete = &sorted[keep..];
+    let sorted = sort_versions_by_recency(repo, inactive);
     let mut deleted = 0usize;
 
-    for v in to_delete {
-        if active_version == Some(v.as_str()) {
-            continue;
-        }
-
+    for v in sorted.iter().skip(keep_inactive) {
         let v_path = config::get_repo_path(repo, Some(v))?;
         fs::remove_dir_all(&v_path)?;
         println!("  🗑  {} deleted", v);
@@ -91,27 +87,27 @@ pub fn run_all(keep: usize) -> Result<()> {
         return Ok(());
     }
 
-    let mut total_deleted = false;
+    let mut any_cleaned = false;
 
     for repo in &repos {
         let versions = extension::get_local_versions(repo)?;
-        let local_info = config::get_repo_from(&registry, repo);
-        let active = local_info.and_then(|i| i.active_version.as_deref());
-        let removable = versions
+        let active = config::get_repo_from(&registry, repo)
+            .and_then(|i| i.active_version.as_deref());
+        let removable_count = versions
             .iter()
             .filter(|v| active != Some(v.as_str()))
             .count();
 
-        if versions.len() <= keep || removable == 0 {
+        if versions.len() <= keep || removable_count == 0 {
             continue;
         }
 
-        total_deleted = true;
+        any_cleaned = true;
         println!("==> {}", repo);
         run(repo, keep)?;
     }
 
-    if !total_deleted {
+    if !any_cleaned {
         println!("{}", "✓ Nothing to cleanup — all extensions are clean".green());
     } else {
         println!("{}", "\n✓ Cleanup complete".green());

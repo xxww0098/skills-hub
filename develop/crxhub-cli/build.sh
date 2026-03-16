@@ -1,19 +1,43 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-# Exit immediately if a command exits with a non-zero status
-set -e
-
-# Change into the directory of the script
 cd "$(dirname "$0")"
 
-echo "Building release binary..."
-cargo build --release
+TARGETS=(
+    "aarch64-apple-darwin:crx-darwin-arm64"
+    "x86_64-apple-darwin:crx-darwin-x86_64"
+    "x86_64-unknown-linux-musl:crx-linux-x86_64"
+    "x86_64-pc-windows-gnu:crx-windows-x86_64.exe"
+)
 
-echo "Removing old binary..."
-rm -f scripts/crx
+mkdir -p scripts
 
-echo "Copying new binary to scripts/..."
-cp target/release/crx scripts/
-chmod +x scripts/crx
+echo "Building release binaries for all platforms..."
+echo ""
 
-echo "Build complete! Binary is available in scripts/crx"
+for entry in "${TARGETS[@]}"; do
+    target="${entry%%:*}"
+    output="${entry##*:}"
+
+    echo "==> $target ($output)"
+
+    # Use cargo-zigbuild for cross-compilation (Linux musl + macOS cross-arch)
+    cargo zigbuild --release --target "$target"
+
+    # Windows builds produce .exe
+    if [[ "$target" == *windows* ]]; then
+        src="target/$target/release/crx.exe"
+    else
+        src="target/$target/release/crx"
+    fi
+    dst="scripts/$output"
+
+    cp "$src" "$dst"
+    chmod +x "$dst"
+    size=$(du -sh "$dst" | cut -f1)
+    echo "    ✓ scripts/$output ($size)"
+    echo ""
+done
+
+echo "Build complete! Binaries in scripts/:"
+ls -lh scripts/crx-*

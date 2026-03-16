@@ -51,10 +51,7 @@ pub fn get_current_path(repo_key: &str) -> Result<PathBuf> {
 }
 
 pub fn ensure_dir(path: &Path) -> Result<()> {
-    if !path.exists() {
-        fs::create_dir_all(path)?;
-    }
-    Ok(())
+    Ok(fs::create_dir_all(path)?)
 }
 
 fn open_registry_file() -> Result<(PathBuf, fs::File)> {
@@ -68,6 +65,7 @@ fn open_registry_file() -> Result<(PathBuf, fs::File)> {
         .read(true)
         .write(true)
         .create(true)
+        .truncate(false)
         .open(&path)
         .with_context(|| format!("Failed to open registry at {:?}", path))?;
 
@@ -103,6 +101,7 @@ fn write_registry_to_file(file: &mut fs::File, path: &Path, registry: &Registry)
     Ok(())
 }
 
+#[allow(clippy::incompatible_msrv)] // lock_shared/lock_exclusive are from fs2, not std
 fn with_registry_lock<T, F>(exclusive: bool, mut f: F) -> Result<T>
 where
     F: FnMut(&mut Registry) -> Result<T>,

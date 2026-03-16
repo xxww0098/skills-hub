@@ -6,7 +6,7 @@ use std::process::ExitCode;
 mod commands;
 mod utils;
 
-use commands::{cleanup, install, list, outdate, remove, update};
+use commands::{cleanup, info, install, list, outdate, remove, update};
 use utils::{github, repo};
 
 #[derive(Parser)]
@@ -79,6 +79,11 @@ enum Commands {
         )]
         keep: usize,
     },
+    #[command(about = "Show details of an installed extension")]
+    Info {
+        #[arg(help = "GitHub repo or URL")]
+        repo: String,
+    },
     #[command(about = "List installed extensions")]
     List,
 }
@@ -97,6 +102,8 @@ fn should_infer_install(arg: &str) -> bool {
             | "outdated"
             | "uninstall"
             | "remove"
+            | "cleanup"
+            | "info"
             | "list"
             | "help"
     ) && repo::is_probably_repo_input(arg)
@@ -141,6 +148,7 @@ fn run(cli: Cli) -> Result<()> {
             Some(repo) => outdate::run(&repo),
             None => outdate::run_all(),
         },
+        Commands::Info { repo } => info::run(&repo),
         Commands::Uninstall { repo } => remove::run(&repo),
         Commands::Cleanup { repo, keep } => match repo {
             Some(repo) => cleanup::run_single(&repo, keep),

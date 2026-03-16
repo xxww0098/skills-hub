@@ -58,6 +58,16 @@ fn spawn_gh_capture(args: &[&str]) -> Result<Child> {
         .context("GitHub CLI (`gh`) is required. Install it from https://cli.github.com/")
 }
 
+fn kill_timed_out(mut child: Child, description: &str) -> anyhow::Error {
+    let _ = child.kill();
+    let _ = child.wait();
+    anyhow::anyhow!(
+        "GitHub CLI timed out after {} seconds while running `{}`",
+        GH_TIMEOUT.as_secs(),
+        description
+    )
+}
+
 fn wait_for_output(mut child: Child, description: &str) -> Result<Output> {
     match child
         .wait_timeout(GH_TIMEOUT)
@@ -66,15 +76,7 @@ fn wait_for_output(mut child: Child, description: &str) -> Result<Output> {
         Some(_) => child
             .wait_with_output()
             .context("Failed to collect GitHub CLI output"),
-        None => {
-            let _ = child.kill();
-            let _ = child.wait();
-            anyhow::bail!(
-                "GitHub CLI timed out after {} seconds while running `{}`",
-                GH_TIMEOUT.as_secs(),
-                description
-            );
-        }
+        None => Err(kill_timed_out(child, description)),
     }
 }
 
@@ -84,15 +86,7 @@ fn wait_for_status(mut child: Child, description: &str) -> Result<ExitStatus> {
         .context("Failed while waiting for GitHub CLI")?
     {
         Some(status) => Ok(status),
-        None => {
-            let _ = child.kill();
-            let _ = child.wait();
-            anyhow::bail!(
-                "GitHub CLI timed out after {} seconds while running `{}`",
-                GH_TIMEOUT.as_secs(),
-                description
-            );
-        }
+        None => Err(kill_timed_out(child, description)),
     }
 }
 

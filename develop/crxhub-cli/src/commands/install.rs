@@ -259,7 +259,7 @@ pub fn run_with_release(
     config::ensure_dir(staged_dest.as_path())?;
 
     println!("{}", "Downloading...".cyan());
-    github::download_release_asset(&repo, &tag, &asset.name, &staged_dest)?;
+    github::download_release_asset(repo, &tag, &asset.name, &staged_dest)?;
     println!("{}", "Verifying download...".cyan());
     github::verify_downloaded_asset(&asset, &staged_dest)?;
 

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # =============================================================================
 # real_browser.sh — Launch a CDP-controllable Chrome with user's login state
 #
@@ -161,7 +161,7 @@ case "$OS" in
       if grep -qi microsoft /proc/version 2>/dev/null; then
          # WSL
          WIN_USER_DIR="$(wslpath "$(cmd.exe /c "echo %LOCALAPPDATA%" 2>/dev/null | tr -d '\r')")" 2>/dev/null || \
-         WIN_USER_DIR="/mnt/c/Users/$(cmd.exe /c "echo %USERNAME%" 2>/dev.nc | tr -d '\r')/AppData/Local"
+         WIN_USER_DIR="/mnt/c/Users/$(cmd.exe /c "echo %USERNAME%" 2>/dev/null | tr -d '\r')/AppData/Local"
          DEFAULT_PROFILE_ROOT="${WIN_USER_DIR}/Google/Chrome/User Data"
       else
          # Native Linux
@@ -193,7 +193,13 @@ cdp_ready() {
 }
 
 port_free() {
-   ! lsof -iTCP:"${PORT}" -sTCP:LISTEN >/dev/null 2>&1
+   if command -v lsof >/dev/null 2>&1; then
+      ! lsof -iTCP:"${PORT}" -sTCP:LISTEN >/dev/null 2>&1
+   elif command -v ss >/dev/null 2>&1; then
+      ! ss -tlnp 2>/dev/null | grep -q ":${PORT} "
+   else
+      ! curl -fsS --connect-timeout 1 "${CDP_URL}/json/version" >/dev/null 2>&1
+   fi
 }
 
 run_cdp() {
@@ -404,7 +410,7 @@ print_status() {
    if [ -n "${START_TIME:-}" ]; then
      END_TIME=$(date +%s%3N)
      DURATION_MS=$((END_TIME - START_TIME))
-     DURATION_S=$(printf "%.2f" "$(echo "$DURATION_MS / 1000" | bc -l 2>/dev/null || echo "0")")
+     DURATION_S=$(awk "BEGIN {printf \"%.2f\", ${DURATION_MS} / 1000}")
      TIME_MSG=" (took ${DURATION_S}s)"
    else
      TIME_MSG=""

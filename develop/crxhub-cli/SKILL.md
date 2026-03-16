@@ -21,46 +21,69 @@ A Rust CLI (`crx`) that downloads, versions, and manages Chromium browser extens
 
 ## How to Run
 
-The pre-built binary is at `scripts/crx` **in the same directory as this SKILL.md**.
+Pre-built binaries are in `scripts/` **in the same directory as this SKILL.md**, one per platform:
 
-When you (the agent) read this file, you already know this file's absolute path.
-Replace the directory part to get the binary path. For example, if this SKILL.md
-is at `/path/to/crxhub-cli/SKILL.md`, then the binary is at `/path/to/crxhub-cli/scripts/crx`.
+| File | Platform |
+|------|----------|
+| `scripts/crx-darwin-arm64` | macOS Apple Silicon |
+| `scripts/crx-darwin-x86_64` | macOS Intel |
+| `scripts/crx-linux-x86_64` | Linux x86_64 |
+| `scripts/crx-windows-x86_64.exe` | Windows x86_64 |
 
-**One-step setup** — run this before any command:
+**Detect and use the right binary** — substitute `<SKILL_DIR>` with the directory
+containing this SKILL.md, then run:
 
+**macOS / Linux (bash):**
 ```bash
-chmod +x /path/to/crxhub-cli/scripts/crx
+SKILL_DIR="<SKILL_DIR>"   # e.g. /Users/alice/skills-hub/develop/crxhub-cli
+case "$(uname -s)-$(uname -m)" in
+  Darwin-arm64)  CRX="$SKILL_DIR/scripts/crx-darwin-arm64"  ;;
+  Darwin-x86_64) CRX="$SKILL_DIR/scripts/crx-darwin-x86_64" ;;
+  Linux-x86_64)  CRX="$SKILL_DIR/scripts/crx-linux-x86_64"  ;;
+  *) echo "Unsupported platform: $(uname -s)-$(uname -m)" >&2; exit 1 ;;
+esac
+chmod +x "$CRX"
 ```
 
-Then use the absolute path directly for all commands below (replace `crx` with the full path).
+**Windows (PowerShell):**
+```powershell
+$CRX = "<SKILL_DIR>\scripts\crx-windows-x86_64.exe"
+```
+
+Then use `$CRX` instead of `crx` in all commands below.
 
 ## Commands
 
 ### Install
 
 ```bash
-crx install <owner/repo>                       # latest release, auto-detect asset
-crx install <owner/repo> --tag 1.5.6           # specific version
-crx install <owner/repo> '*chrome*.zip'        # filter by asset name glob
-crx install <owner/repo> --tag v2.0 -y         # specific version, skip prompt
-crx <owner/repo>                               # shorthand (infers install)
-crx https://github.com/owner/repo              # GitHub URL also works
+$CRX install <owner/repo>                       # latest release, auto-detect asset
+$CRX install <owner/repo> --tag 1.5.6           # specific version
+$CRX install <owner/repo> '*chrome*.zip'        # filter by asset name glob
+$CRX install <owner/repo> --tag v2.0 -y         # specific version, skip prompt
+$CRX <owner/repo>                               # shorthand (infers install)
+$CRX https://github.com/owner/repo              # GitHub URL also works
 ```
 
 ### Update
 
 ```bash
-crx update <owner/repo>              # update single extension to latest
-crx update <owner/repo> 1.5.6       # switch to a specific version
-crx update                           # update all installed extensions
+$CRX update <owner/repo>              # update single extension to latest
+$CRX update <owner/repo> 1.5.6        # switch to a specific version
+$CRX update                            # update all installed extensions
 ```
 
 ### Check Outdated
 
 ```bash
-crx outdate                          # check all
-crx outdate <owner/repo>             # check one
+$CRX outdate                          # check all
+$CRX outdate <owner/repo>             # check one
+```
+
+### Info
+
+```bash
+$CRX info <owner/repo>               # show version, id, load path, disk usage
 ```
 
 ### Cleanup
@@ -68,21 +91,21 @@ crx outdate <owner/repo>             # check one
 Remove old versions, keep only the active one (like `brew cleanup`).
 
 ```bash
-crx cleanup                          # cleanup all repos
-crx cleanup <owner/repo>             # cleanup one repo
-crx cleanup --keep 3                 # keep 3 most recent versions
+$CRX cleanup                          # cleanup all repos
+$CRX cleanup <owner/repo>             # cleanup one repo
+$CRX cleanup --keep 3                 # keep 3 most recent versions
 ```
 
 ### List
 
 ```bash
-crx list                             # show installed extensions + load paths
+$CRX list                             # show installed extensions + load paths
 ```
 
 ### Uninstall
 
 ```bash
-crx uninstall <owner/repo>
+$CRX uninstall <owner/repo>
 ```
 
 ### Global Flags
@@ -107,7 +130,7 @@ crx uninstall <owner/repo>
 ## How It Works
 
 1. Fetches release metadata via `gh release view`
-2. Scores assets to pick the best `.crx` / `.zip` for Chromium (prefers Edge > Chrome > generic; penalizes Firefox/Safari)
+2. Scores assets to pick the best `.crx` / `.zip` for Chromium (prefers Edge > Chrome/Chromium > generic; penalizes Firefox/Safari/Opera)
 3. Downloads, verifies SHA-256 digest (if available), and unpacks
 4. Atomically replaces the `current/` directory so the browser picks up new files on reload
 5. Old versions are auto-cleaned (keeps 3 most recent) after updates
