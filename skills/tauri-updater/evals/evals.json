@@ -1,0 +1,23 @@
+{
+  "skill_name": "tauri-updater",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have a Tauri v2 + React desktop app and I want to add auto-update functionality. The app should check for updates from GitHub Releases automatically and show a notification in the sidebar when a new version is available. Can you implement this?",
+      "expected_output": "Full implementation of auto-update: Cargo.toml dependencies, tauri.conf.json updater config, lib.rs plugin registration, useUpdater hook, Sidebar update bar UI, and App.tsx wiring.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Help me set up a CI/CD pipeline for my Tauri React app. I need GitHub Actions to build for macOS, Linux, and Windows, sign the artifacts, and generate a latest.json file that the Tauri updater can consume.",
+      "expected_output": "A complete .github/workflows/release.yml with matrix build, tauri-action integration, latest.json generation job, and the build_merged_latest_json.cjs script.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I want to add a non-intrusive update notification to my existing Tauri app. No modal dialogs — just a small notification bar below the logo in the sidebar that shows when an update is available, lets me download it, and restart. It should also handle errors gracefully.",
+      "expected_output": "An UpdateBar React component with states for available/downloading/ready/error, integrated into the existing Sidebar component with framer-motion animations.",
+      "files": []
+    }
+  ]
+}

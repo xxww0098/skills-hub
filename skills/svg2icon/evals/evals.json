@@ -1,0 +1,23 @@
+{
+  "skill_name": "svg2icon",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "把 public/agenthub-icon.svg 转成这个 Tauri 项目的完整 icon，并同步 favicon。",
+      "expected_output": "src-tauri/icons 下图标集被更新，index.html favicon 指向 /agenthub-icon.svg。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "这个 SVG 背景改成白色圆角后，再重新生成应用图标。",
+      "expected_output": "SVG 背景被更新，图标重新生成成功，关键文件（icon.icns/icon.ico/icon.png）存在。",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "为什么图标显得偏大？请通过安全边距调整 SVG 后重新出 icon。",
+      "expected_output": "SVG 画布内缩参数被调整，图标资产更新，结果说明包含变更文件路径。",
+      "files": []
+    }
+  ]
+}
