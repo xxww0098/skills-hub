@@ -1,17 +1,18 @@
 ---
 name: real-browser
 description: >
-  Attach agent-browser to an existing browser session or an already-running
-  CDP-enabled Chrome with the user's login state. Do not open cloned profiles or
-  launch a new browser.
-allowed-tools: Bash(agent-browser:*), Bash(npx agent-browser:*)
+  Attach agent-browser only to an already-running, non-agent-browser Chrome
+  process that was started with a fixed CDP port. Never discover by using
+  agent-browser's default session, cloned profiles, saved state, or new browser
+  launches.
+allowed-tools: Bash(agent-browser:*), Bash(npx agent-browser:*), Bash(ps:*), Bash(rg:*), Bash(sed:*), Bash(curl:*), Bash(lsof:*)
 ---
 
-# Real Browser — Session-First Browser Takeover
+# Real Browser — Existing Chrome CDP Takeover
 
-> Use the browser that already exists before launching anything new.
+> Use an existing Chrome process only.
 > `agent-browser` skill = all browser commands. This skill = how to choose the browser/session.
-> Success means attached to a live session, not opened from a copied profile.
+> Success means attached to an old non-agent-browser Chrome PID, not a default agent-browser session.
 
 ## Step 0: Load the `agent-browser` Skill
 
@@ -22,43 +23,43 @@ version-matched workflow:
 agent-browser skills get core
 ```
 
-## Step 1: Reuse the Current Session
+## Step 1: Find an Existing CDP Chrome
 
-Check whether agent-browser already has a session and use it directly:
+Do not run `agent-browser session list`, `agent-browser get url`,
+`agent-browser snapshot`, or `agent-browser --auto-connect` as discovery. Those
+can attach to or start agent-browser-managed Chrome processes.
+
+First find a user Chrome process that already has a fixed CDP port:
 
 ```bash
-agent-browser session list
-agent-browser get url
-agent-browser snapshot -i
+ps -axo pid=,command= | rg 'Google Chrome.*--remote-debugging-port=' | rg -v 'agent-browser-chrome-|--headless'
 ```
 
-If the current page is usable, keep using plain `agent-browser ...` commands.
-For a named existing session:
+Extract the port, ignoring `--remote-debugging-port=0` because that is a
+dynamic agent-browser launch:
 
 ```bash
-agent-browser --session <name> get url
-agent-browser --session <name> snapshot -i
+PORT="$(ps -axo command= | rg 'Google Chrome.*--remote-debugging-port=' | rg -v 'agent-browser-chrome-|--headless' | sed -nE 's/.*--remote-debugging-port=([1-9][0-9]*).*/\1/p' | head -n1)"
+test -n "$PORT"
 ```
 
-Use `AGENT_BROWSER_SESSION=<name>` when many commands target the same session.
+If no port is found, stop. A normal already-running Chrome cannot be converted
+into a CDP browser from the outside. Ask the user to restart that same Chrome
+with a fixed `--remote-debugging-port` and rerun the skill.
 
-## Step 2: Take Over an Existing CDP Chrome
+## Step 2: Verify CDP Without Launching
 
-If Chrome is already running with remote debugging enabled, connect instead of
-launching a new browser:
+Probe the existing port directly:
 
 ```bash
-agent-browser --auto-connect get url
-agent-browser --auto-connect snapshot -i
+curl -fsS "http://127.0.0.1:${PORT}/json/version" >/dev/null
 ```
 
-If the user's current logged-in Chrome is not CDP-enabled yet, do not use
-`--profile`. Ask them to restart or open Chrome with a CDP port, then attach:
+Only after the curl check passes, attach with `--cdp`:
 
 ```bash
-"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --remote-debugging-port=9222
-agent-browser --cdp 9222 get url
-agent-browser --cdp 9222 snapshot -i
+agent-browser --cdp "$PORT" get url
+agent-browser --cdp "$PORT" snapshot -i
 ```
 
 Security: a CDP port gives local processes full browser control. Use it only on
@@ -71,15 +72,17 @@ Do not use `agent-browser --profile`, `AGENT_BROWSER_PROFILE`,
 skill's default path. Those create, copy, or restore browser state; they do not
 attach to the user's current live session.
 
+Also do not use `agent-browser` without `--cdp "$PORT"` in this skill. Plain
+`agent-browser ...` commands target the default agent-browser session and may
+create a new Chrome.
+
 ## Interact via `agent-browser`
 
 Use the same connection flag for every command in that browser context:
 
 ```bash
-agent-browser snapshot -i                 # current/default session
-agent-browser --session work snapshot -i  # named session
-agent-browser --auto-connect snapshot -i  # discovered CDP Chrome
-agent-browser --cdp 9222 snapshot -i      # known CDP Chrome
+agent-browser --cdp "$PORT" snapshot -i
+agent-browser --cdp "$PORT" click @e3
 ```
 
 ## Visibility Guard
@@ -88,9 +91,9 @@ If commands fail or return unexpected results, the active target may be a
 `chrome://` page or the wrong tab. Diagnose and switch:
 
 ```bash
-agent-browser get url
-agent-browser tab list
-agent-browser tab <index-or-tabId>
+agent-browser --cdp "$PORT" get url
+agent-browser --cdp "$PORT" tab list
+agent-browser --cdp "$PORT" tab <index-or-tabId>
 ```
 
 ## Login State Notes
@@ -105,19 +108,18 @@ content that is not needed for the task.
 
 ## Rules
 
-1. Prefer: current session → named session → `--auto-connect` → known `--cdp <port>`.
-2. Do not use profile, state, or launch-script fallbacks.
-3. Keep the chosen flag (`--session`, `--auto-connect`, or `--cdp`) consistent across commands.
-4. `open` → `wait --load networkidle`.
-5. `snapshot -i` before interactions; re-snapshot after navigation or DOM changes.
-6. Never mix `chrome-devtools` tool with `agent-browser`.
+1. First prove an existing non-agent-browser Chrome PID has a fixed CDP port.
+2. If no such process exists, stop; do not create one.
+3. Do not use profile, state, session, auto-connect, or launch-script fallbacks.
+4. Use `--cdp "$PORT"` on every `agent-browser` command.
+5. `open` → `wait --load networkidle`.
+6. `snapshot -i` before interactions; re-snapshot after navigation or DOM changes.
+7. Never mix `chrome-devtools` tool with `agent-browser`.
 
 ## Troubleshooting
 
 ```bash
-agent-browser doctor --offline --quick
-agent-browser session list
-agent-browser --auto-connect get url
-lsof -iTCP:9222 -sTCP:LISTEN    # find a known CDP port (macOS / most Linux)
-ss -tlnp | grep :9222            # alternative if lsof is unavailable (Linux)
+ps -axo pid=,command= | rg 'Google Chrome.*--remote-debugging-port='
+lsof -nP -iTCP:"$PORT" -sTCP:LISTEN
+curl -fsS "http://127.0.0.1:${PORT}/json/version"
 ```
