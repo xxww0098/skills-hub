@@ -5,7 +5,7 @@ description: >
   process that was started with a fixed CDP port. Never discover by using
   agent-browser's default session, cloned profiles, saved state, or new browser
   launches.
-allowed-tools: Bash(agent-browser:*), Bash(npx agent-browser:*), Bash(ps:*), Bash(rg:*), Bash(sed:*), Bash(curl:*), Bash(lsof:*)
+allowed-tools: Bash(agent-browser:*), Bash(npx agent-browser:*), Bash(ps:*), Bash(awk:*), Bash(sed:*), Bash(curl:*), Bash(lsof:*)
 ---
 
 # Real Browser — Existing Chrome CDP Takeover
@@ -17,11 +17,8 @@ allowed-tools: Bash(agent-browser:*), Bash(npx agent-browser:*), Bash(ps:*), Bas
 ## Step 0: Load the `agent-browser` Skill
 
 Before running browser commands, load the `agent-browser` skill, then get the
-version-matched workflow:
-
-```bash
-agent-browser skills get core
-```
+version-matched workflow from the installed CLI. Do this as documentation
+lookup only, not as a browser session command.
 
 ## Step 1: Find an Existing CDP Chrome
 
@@ -32,14 +29,14 @@ can attach to or start agent-browser-managed Chrome processes.
 First find a user Chrome process that already has a fixed CDP port:
 
 ```bash
-ps -axo pid=,command= | rg 'Google Chrome.*--remote-debugging-port=' | rg -v 'agent-browser-chrome-|--headless'
+ps -axo pid=,command= | awk '/[G]oogle Chrome/ && /--remote-debugging-port=[1-9][0-9]*/ && !/agent-browser-chrome-/ && !/--headless/ {print}'
 ```
 
 Extract the port, ignoring `--remote-debugging-port=0` because that is a
 dynamic agent-browser launch:
 
 ```bash
-PORT="$(ps -axo command= | rg 'Google Chrome.*--remote-debugging-port=' | rg -v 'agent-browser-chrome-|--headless' | sed -nE 's/.*--remote-debugging-port=([1-9][0-9]*).*/\1/p' | head -n1)"
+PORT="$(ps -axo command= | awk '/[G]oogle Chrome/ && /--remote-debugging-port=[1-9][0-9]*/ && !/agent-browser-chrome-/ && !/--headless/ {print; exit}' | sed -nE 's/.*--remote-debugging-port=([1-9][0-9]*).*/\1/p')"
 test -n "$PORT"
 ```
 
@@ -119,7 +116,7 @@ content that is not needed for the task.
 ## Troubleshooting
 
 ```bash
-ps -axo pid=,command= | rg 'Google Chrome.*--remote-debugging-port='
+ps -axo pid=,command= | awk '/[G]oogle Chrome/ && /--remote-debugging-port=/ {print}'
 lsof -nP -iTCP:"$PORT" -sTCP:LISTEN
 curl -fsS "http://127.0.0.1:${PORT}/json/version"
 ```
