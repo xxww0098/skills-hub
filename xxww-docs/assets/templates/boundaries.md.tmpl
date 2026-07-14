@@ -1,0 +1,28 @@
+# 目录边界
+
+> 状态：active
+> 生成于 {{GENERATED_DATE}}；请基于 composition root、manifest 和公开入口补充职责与反职责。
+
+## 1. 完整项目树
+
+```text
+{{PROJECT_TREE}}
+```
+
+## 2. 依赖方向
+
+```text
+composition root → application/feature → domain → port ← adapter
+```
+
+- 依赖方向以 manifest、公开导出和实际 import 为证据。
+- 只有真实变化点或跨进程边界才建立 port。
+- 测试与生产调用方穿过同一公开接口。
+
+## 3. 规范接缝
+
+审查 API、IPC、CLI、数据库、文件系统和外部服务，在此记录接口所在与唯一出口。
+
+## 4. 新文件放哪
+
+按“属于哪个部署单元 → 属于哪个功能 → 是否跨边界 → 是否需要共享”的顺序判断；先深化现有模块，不为假想复用创建浅层共享目录。

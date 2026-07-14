@@ -1,0 +1,4 @@
+interface:
+  display_name: "XXWW Docs"
+  short_description: "初始化、阶段性重构与重新校准 AGENTS.md 和 docs 文档体系"
+  default_prompt: "使用 $xxww-docs refresh 重新研究当前代码并恢复仓库文档维护。"
