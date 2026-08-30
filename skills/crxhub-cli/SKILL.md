@@ -1,46 +1,43 @@
 ---
 name: crxhub-cli
-description: Manage browser extensions from GitHub Releases. Use when user wants to install, update, remove, list, or check versions of browser extensions/crx files.
-argument-hint: <command> [owner/repo] [args...]
+description: >
+  Install, update, remove, list, and version-check browser extensions (.crx)
+  from GitHub Releases. Use when the user mentions crxhub, crx, Chrome or Edge
+  extension from GitHub, 安装扩展, 更新 crx, 删除扩展, outdate, or wants a
+  GitHub-released browser extension without the Chrome Web Store.
 ---
 
 # CrxHub CLI
 
-Requires **GitHub CLI** (`gh`) authenticated.
+Requires authenticated `gh`.
 
-## How to Run
-
-**Always combine setup + command in ONE shell call.** Replace `<SKILL_DIR>` with this SKILL.md's directory:
+Resolve the bundled binary from this SKILL.md's directory and run the user
+action in **one** shell call. Do not run `list` / `outdate` first unless asked.
 
 ```bash
-CRX="<SKILL_DIR>/scripts/crx-$(uname -s | tr A-Z a-z)-$(uname -m)" && chmod +x "$CRX" && $CRX update
+CRX="<SKILL_DIR>/scripts/crx-$(uname -s | tr A-Z a-z)-$(uname -m)"
+chmod +x "$CRX"
 ```
 
-## Quick Workflows
-
-Use the **minimum commands** needed. Do NOT run exploratory commands (list, outdate) before the action unless the user specifically asks.
-
-| User intent | Command (append after `&& $CRX`) |
-|---|---|
-| "更新 crx" / update all | `update` |
-| "更新 XX" / update one | `update owner/repo` |
-| "安装 XX" / install | `install owner/repo -y` |
-| "删除 XX" / remove | `uninstall owner/repo` |
-| "列出扩展" / list | `list` |
-| "检查更新" / check updates | `outdate` |
-
-## Commands
+| Intent | Command |
+|--------|---------|
+| update all / 更新 crx | `$CRX update` |
+| update one / 更新 XX | `$CRX update owner/repo` |
+| install / 安装 XX | `$CRX install owner/repo -y` |
+| remove / 删除 XX | `$CRX uninstall owner/repo` |
+| list / 列出扩展 | `$CRX list` |
+| check updates / 检查更新 | `$CRX outdate` |
 
 ```bash
 $CRX install <owner/repo> -y              # latest, auto-detect asset
-$CRX install <owner/repo> --tag 1.5.6 -y  # specific version
-$CRX update                               # update ALL installed
-$CRX update <owner/repo>                  # update one
-$CRX list                                 # installed extensions + paths
-$CRX outdate                              # check for updates
-$CRX info <owner/repo>                    # version, path, disk usage
-$CRX cleanup                              # remove old versions (keep 3)
+$CRX install <owner/repo> --tag 1.5.6 -y  # pin version
+$CRX update                               # all installed
+$CRX update <owner/repo>
+$CRX list
+$CRX outdate
+$CRX info <owner/repo>
+$CRX cleanup                              # keep last 3 versions
 $CRX uninstall <owner/repo>
 ```
 
-**Always pass `-y` on install** to avoid interactive prompts hanging the shell.
+Always pass `-y` on install so the shell cannot hang on a prompt.

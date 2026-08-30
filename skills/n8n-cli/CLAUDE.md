@@ -1,1 +1,7 @@
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3YmE0MWUzYy1mNGE0LTRkMjgtOGFiOC0yMDY0NWQwOWRjMjMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiYWUyZTVkMmUtNzMzNC00N2E5LTg1NjQtMzZiNzhiNjczMTQ5IiwiaWF0IjoxNzc1MjMwNzMyLCJleHAiOjE3ODI5MjE2MDB9.W4scLp389lYrv-mo8KVregrRRwrZYW9nipUArCEr9GI
+# n8n-cli (draft)
+
+Not installable. No `SKILL.md` and no CLI contract.
+
+This folder is an unfinished stub: leftover test-report images only.
+A previous file here contained a credential and was removed.
+Do not invent an n8n workflow from this directory.
