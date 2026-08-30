@@ -27,6 +27,10 @@ Host desktop (Cua Driver) — default:
   frameworks                     Toolkit playbook (Tauri / Electron / Flutter / canvas)
   docs [tools|mcp|cli|all]       Live docs from the binary
   doctor / status
+  grant                          macOS: permissions grant
+  permissions [status|grant]     OS permission probe
+  status                         Daemon liveness
+  stop                           Stop daemon
   serve                          Start daemon
   call <tool> [json]             Invoke a driver tool
   list-tools / describe <tool>
@@ -171,6 +175,14 @@ switch ($cmd) {
         if (-not (Wait-Daemon $bin)) { Die "daemon failed to start" }
         Info "daemon ready"
     }
+    "grant" { Die "grant is macOS-only. Use: cua-use.ps1 doctor --json. Never: cua-driver grant" }
+    "permissions" {
+        $sub = if ($rest.Count -ge 1) { $rest[0] } else { "status" }
+        $more = @()
+        if ($rest.Count -gt 1) { $more = $rest[1..($rest.Count - 1)] }
+        Invoke-Driver permissions $sub @more
+    }
+    "stop" { Invoke-Driver stop @rest }
     "call" {
         if ($rest.Count -lt 1) { Die "usage: cua-use.ps1 call <tool> [json]" }
         Invoke-Driver call @rest

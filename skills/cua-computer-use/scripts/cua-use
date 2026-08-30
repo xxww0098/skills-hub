@@ -24,8 +24,12 @@ Host desktop (Cua Driver) — default:
   docs [tools|mcp|cli|all]       Live docs from the binary (source of truth)
   doctor                         cua-driver doctor  (pass --json)
   status                         cua-driver status
-  grant                          macOS Accessibility + Screen Recording prompts
+  grant                          macOS: cua-driver permissions grant (via CuaDriver.app)
+  permissions [status|grant]     TCC / OS permission probe (pass --json)
+  status                         Daemon liveness (`cua-driver status`)
+  stop                           Stop the daemon
   serve                          Start daemon (macOS via CuaDriver.app)
+
   call <tool> [json]             Invoke a driver tool (requires daemon)
   list-tools                     List MCP/CLI tools
   describe <tool>                Describe one tool schema
@@ -81,9 +85,18 @@ install_driver() {
   fi
   command -v curl >/dev/null 2>&1 || die "curl is required to install cua-driver"
   info "installing cua-driver via https://cua.ai/driver/install.sh"
+  set +e
   /bin/bash -c "$(curl -fsSL https://cua.ai/driver/install.sh)"
+  local rc=$?
+  set -e
   hash -r 2>/dev/null || true
-  resolve_driver >/dev/null || die "install finished but cua-driver is not on PATH (open a new terminal or source ~/.zshrc)"
+  if resolve_driver >/dev/null; then
+    if [ "$rc" -ne 0 ]; then
+      info "installer exited $rc but cua-driver is on PATH — continuing"
+    fi
+    return 0
+  fi
+  die "install finished but cua-driver is not on PATH (open a new terminal or source ~/.zshrc)"
 }
 
 driver() {
@@ -144,7 +157,7 @@ cmd_ensure() {
 }
 
 cmd_grant() {
-  is_darwin || die "grant is macOS-only (Accessibility + Screen Recording)"
+  is_darwin || die "grant is macOS-only. Linux: cua-use doctor --json (AT-SPI / DISPLAY). Never run: cua-driver grant (that is not a subcommand)."
   local bin
   bin="$(resolve_driver)" || die "install cua-driver first: cua-use install"
   if [ -d /Applications/CuaDriver.app ]; then
@@ -153,9 +166,16 @@ cmd_grant() {
     start_daemon "$bin"
   fi
   sleep 1
-  "$bin" grant
-  "$bin" status || true
-  info "toggle Accessibility and Screen Recording ON in System Settings, then re-run: cua-use status"
+  # 0.22+: the subcommand is `permissions grant`, NOT `grant`.
+  "$bin" permissions grant
+  "$bin" permissions status --json || "$bin" permissions status || true
+  info "toggle Accessibility and Screen Recording ON for CuaDriver.app, then: cua-use permissions status --json"
+}
+
+cmd_permissions() {
+  local sub="${1:-status}"
+  shift || true
+  driver permissions "$sub" "$@"
 }
 
 cmd_serve() {
@@ -260,7 +280,9 @@ main() {
     doctor) driver doctor "$@" ;;
     status) driver status "$@" ;;
     grant) cmd_grant ;;
+    permissions) cmd_permissions "$@" ;;
     serve) cmd_serve ;;
+    stop) driver stop "$@" ;;
     call)
       [ "$#" -ge 1 ] || die "usage: cua-use call <tool> [json]"
       driver call "$@"

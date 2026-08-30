@@ -25,7 +25,7 @@ chmod +x "$CUA"
 "$CUA" call list_apps
 ```
 
-macOS 第一次：`"$CUA" grant`，再到系统设置里把 CuaDriver 的辅助功能和屏幕录制打开。
+macOS 第一次：`"$CUA" grant`（`permissions grant`，不要跑 `cua-driver grant`），再到系统设置里把 CuaDriver 的辅助功能和屏幕录制打开。查权限：`"$CUA" permissions status --json`。
 
 ## Installation
 

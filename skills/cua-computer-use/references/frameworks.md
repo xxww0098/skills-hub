@@ -20,7 +20,13 @@ Cua release limits (do not argue with them):
 
 ## Classify (do this once)
 
-From `list_apps` / `list_windows` / the binary name:
+From `list_windows` first (pid + window_id + title). On Linux, **do not**
+pick a pid from `list_apps` — that list is `/proc` and includes shells.
+
+Then `get_window_state` with `include_screenshot: true`. Click with
+`element_token` from that snapshot (or `element_index` **plus** `snapshot_id`).
+If the tree is one `AXWebArea` / `HTMLContent` / `FlutterView` / empty,
+**stop using AX for inner controls**.
 
 | Clue | Surface | Channel order |
 |------|---------|----------------|
@@ -33,10 +39,6 @@ From `list_apps` / `list_windows` / the binary name:
 | GTK 3/4, GNOME apps | GTK | AT-SPI AX; Wayland keys may need `set_value` or XWayland |
 | WPF / WinUI / WinForms | Native UIA | AX first |
 | VS Code / Cursor | Electron | CDP if one window/page; else AX |
-
-Then `get_window_state` with `include_screenshot: true`. If the tree is one
-`AXWebArea` / `HTMLContent` / `FlutterView` / empty, **stop using AX for inner
-controls**.
 
 Electron AX trees are huge — pass `max_elements` / `max_depth` / `query`.
 
@@ -70,7 +72,7 @@ unfocused GTK/Qt may return `background_unavailable` — use `set_value` /
 1. `describe browser_prepare` / `get_browser_state`. If the PID binds to one
    CDP page, use `page` (click_element, insert_text). That is the only
    **typed** web path Cua claims.
-2. Else `get_window_state` with `query` and truncated depth. Click by index.
+2. Else `get_window_state` with `query` and truncated depth. Click with `element_token`.
 3. Inner web still unverifiable for `type_text` — verify on screenshot.
 4. Multi-window Electron (DevTools + app) is **not** the validated shape.
    Drive the content window with AX/PX; do not guess extra CDP targets.

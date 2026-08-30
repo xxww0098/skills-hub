@@ -145,12 +145,11 @@ irm https://cua.ai/driver/install.ps1 | iex
 
 ```bash
 "$CUA" grant
+# 内部调用 cua-driver permissions grant（不是子命令 grant）
 # 系统设置 → 隐私与安全性
 #   辅助功能（Accessibility）        → CuaDriver 打开
 #   屏幕录制（Screen Recording）     → CuaDriver 打开
-"$CUA" status
-# Accessibility: granted
-# Screen Recording: granted
+"$CUA" permissions status --json
 ```
 
 缺一个就再跑一遍 `grant`。授权后若提示退出重开，接受；daemon 没回来就 `"$CUA" serve`。
@@ -191,9 +190,11 @@ irm https://cua.ai/driver/install.ps1 | iex
 "$CUA" guide                          # --version + list-tools（每个会话跑一次）
 "$CUA" docs [tools|mcp|cli|all]       # 二进制自带的活文档
 "$CUA" doctor [--json]                # 环境报告
-"$CUA" status                         # macOS 权限
-"$CUA" grant                          # macOS 授权提示
+"$CUA" grant                          # macOS: permissions grant（经 CuaDriver.app）
+"$CUA" permissions status --json      # TCC。`status` 只表示 daemon
+"$CUA" status                         # daemon 是否在听 socket
 "$CUA" serve                          # 只拉起 daemon
+"$CUA" stop                           # 停 daemon
 "$CUA" call <tool> [json]             # 驱动桌面
 "$CUA" list-tools
 "$CUA" describe <tool>
@@ -209,7 +210,7 @@ Windows 把 `"$CUA"` 换成 `& $CUA`。覆盖二进制：`export CUA_DRIVER_BIN=
 
 Agent 策略（inspect → act → verify）写在 SKILL.md。具体参数以 `describe` 为准，不要抄过期示例。
 
-规则：先列窗口，再点；优先 `element_index`，不要盲点坐标；默认不 `bring_to_front`；密码 / 支付 / 公司内网窗口先问用户。
+规则：先 `list_windows` 再点；优先 `element_token`（或 `element_index` + `snapshot_id`）；默认不 `bring_to_front`；密码 / 支付 / 公司内网窗口先问用户。
 
 ---
 
@@ -259,7 +260,7 @@ cua sb create --os linux
 | 症状 | 处理 |
 |------|------|
 | `cua-driver: command not found` | `"$CUA" install`；新开终端；`source ~/.zshrc` |
-| macOS `status` 为 unknown / denied | `"$CUA" grant`，系统设置里手动打开 CuaDriver |
+| macOS TCC unknown / denied | `"$CUA" grant`，再 `"$CUA" permissions status --json` |
 | `list_apps` 为空或失败 | `"$CUA" serve`，再 `"$CUA" doctor --json` |
 | `list-tools` / `guide` 未知命令 | `"$CUA" update`，二进制太旧 |
 | Agent 连不上 MCP | 用 `connect` 打印的绝对路径；重启客户端 |

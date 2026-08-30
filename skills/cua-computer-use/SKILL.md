@@ -15,90 +15,93 @@ argument-hint: <command> [args...]
 
 # Computer Use (Cua Driver)
 
-This file is a **discovery stub + policy**, not the tool catalog.
-Live tool names come from the `cua-driver` binary. Toolkit routing lives in
-[references/frameworks.md](./references/frameworks.md) (also `CUA frameworks`).
+Stub + policy. Tool schemas come from the **installed** `cua-driver` binary
+(`describe` / `guide`). Toolkit routing: [references/frameworks.md](./references/frameworks.md)
+or `CUA frameworks`. Live-binary traps: [references/adversary.md](./references/adversary.md).
 
-Not Anthropic's Computer Use API. Human install: [README.md](./README.md).
+Not Anthropic's Computer Use API. Install notes: [README.md](./README.md).
 
 ## Resolve the CLI once
 
-Pick one executable for the whole session. If it fails, report the exact error
-and stop — do not fall through to another binary.
+If it fails, report the exact error and stop. Do not fall through.
 
-1. `CUA_DRIVER_WRAPPER` if set.
-2. Else `<SKILL_DIR>/scripts/cua-use` (macOS/Linux) or `scripts/cua-use.ps1`.
-3. Else `CUA_DRIVER_BIN` if executable.
-4. Else `cua-driver` on PATH.
+1. `<SKILL_DIR>/scripts/cua-use` (macOS/Linux) or `scripts/cua-use.ps1`.
+2. Else `CUA_DRIVER_BIN` if executable.
+3. Else `cua-driver` on PATH.
 
-`CUA` below is that command.
+`CUA` is that wrapper. Prefer it over raw `cua-driver` — unknown raw tokens
+are treated as **tool names** (`cua-driver grant` is not `permissions grant`).
 
 ```bash
 CUA="<SKILL_DIR>/scripts/cua-use" && chmod +x "$CUA" && "$CUA" ensure && "$CUA" guide
 ```
 
-macOS daemon must come from **CuaDriver.app**. Permissions: `CUA grant` then
-toggle Accessibility + Screen Recording. Health: `CUA doctor --json`.
+macOS daemon **must** come from **CuaDriver.app**. Then:
 
-## Load live tools, then classify the window
+```bash
+CUA grant                         # → permissions grant (not `grant`)
+CUA permissions status --json     # TCC. `CUA status` is daemon liveness only
+```
+
+Health: `CUA doctor --json`. Linux needs `DISPLAY` or Wayland; `active` in
+`list_apps` is **always false**.
+
+## Load live tools, then classify
 
 ```bash
 CUA guide
-CUA describe <tool>
-CUA frameworks              # toolkit playbook (Tauri / Electron / Flutter / …)
+CUA describe click                # note snapshot_id / element_token
+CUA frameworks
 ```
 
-Do not guess schemas from this stub. After `list_windows`, **classify** using
-[frameworks.md](./references/frameworks.md) before the first inner click.
+Do not guess schemas. After `list_windows`, classify (see frameworks.md).
 
 | Clue | Channel |
 |------|---------|
-| Cocoa / WPF / WinUI / GTK widgets / Qt Widgets | AX `element_index` |
-| Electron (VS Code, Slack) | CDP `browser_prepare`+`page` if one window/page; else truncated AX |
-| Tauri, WKWebView, WebView2, WebKitGTK | AX then PX. Typed CDP is **refused** |
+| Cocoa / WPF / WinUI / GTK widgets / Qt Widgets | AX `element_token` |
+| Electron (VS Code, Slack) | CDP if one window/page; else truncated AX |
+| Tauri, WKWebView, WebView2, WebKitGTK | AX then PX. Typed CDP **refused** |
 | Flutter | Semantics AX then PX |
-| Canvas, Unity, Blender, WebGL, custom paint | Foreground + PX |
+| Canvas, Unity, Blender, WebGL | Foreground + PX |
 
 ## Drive policy
 
 ```text
 inspect → classify → act → verify
-1. list_apps / list_windows
+1. list_windows (not list_apps) to pick pid + window_id
 2. launch_app only if it is not running
-3. get_window_state (AX + screenshot). query / max_elements on huge trees
-4. click / type_text / press_key / set_value / drag  — channel from the table
-5. screenshot / get_window_state again; stop when the result is visible
+3. get_window_state {pid, window_id, include_screenshot:true}
+4. click / type_text / set_value using element_token from THAT snapshot
+5. re-snapshot; never reuse a stale element_index
 ```
 
-Rules:
+Hard rules (0.22.x live binary):
 
-1. `ensure` + `guide` once per session.
-2. Prefer AX names over coordinates **except** when the tree is one WebView /
-   FlutterView / empty / canvas.
-3. Stay in the background unless the playbook says the runtime drops
-   background pixels (Unity/Blender/WebGL) or a webview ignores typing.
-4. `type_text` into Chromium/WebKit/Electron web is `unverifiable` — verify
-   on the screenshot, or use CDP `page` on Electron only.
-5. Do not `browser_prepare` a Tauri / WebView2 / Flutter PID unless bind
-   actually succeeds.
-6. Login / password / payment / corp-intranet: ask first.
-7. Do not click the user's frontmost editor. Do not `kill_app` unless asked.
-8. Agents use `CUA call <tool>`. Do not invent tools.
+1. `ensure` + `guide` once per session. `call` needs the daemon (`serve`).
+2. `get_window_state` **requires** `pid` and `window_id`.
+3. Prefer `element_token`. `element_index` **must** include the matching
+   `snapshot_id`. Stale snapshot → error; re-run `get_window_state`.
+4. Pixel `x,y` are **window-local screenshot** pixels, not `elements[].frame`.
+5. Linux: `list_apps` mixes `/proc` (bash, cua-driver, …). Target from
+   `list_windows`. `z_index` may be null — do not use array order.
+6. `type_text` into Chromium/WebKit/Electron web is `unverifiable`.
+7. Do not `browser_prepare` Tauri / WebView2 / Flutter unless bind succeeds.
+8. Stay background unless Unity/Blender/WebGL drop PX, or a webview ignores typing.
+9. Login / password / payment / corp-intranet: ask first.
+10. Do not click the user's frontmost editor. Do not `kill_app` unless asked.
+11. Agents: `CUA call <tool> '<json>'`. Never `cua-driver <tool>`.
 
-Cua Lab fixture (`productName` / title **Cua Lab**): unique names
-`Probe Increment`, `Probe Key 6`, `Probe Name Field`, `Probe Gain`,
-`Probe Row Alpha`, `Probe Canvas`, `Probe Surface Flutter`.
-Smoke AX: 6 × 7 → `Probe Result` `42`. Smoke paint: switch to Flutter/Canvas
-and click the drawn keys on `Probe Canvas`.
+Cua Lab title **Cua Lab**. Names: `Probe Increment`, `Probe Key 6`,
+`Probe Name Field`, `Probe Gain`, `Probe Row Alpha`, `Probe Canvas`,
+`Probe Surface Flutter`. AX smoke: 6 × 7 → `Probe Result` `42`.
 
-## Bounded fallback (old cua-driver only)
+## Bounded fallback
 
-Only when the binary **explicitly** says `guide` / `list-tools` is unknown:
+Only when the binary **explicitly** says `list-tools` is unknown:
 
 ```bash
 CUA doctor --json
-CUA call list_apps
 CUA call list_windows '{"on_screen_only": true}'
 ```
 
-Then tell the user to `CUA update`. MCP, sandbox, installers: [README.md](./README.md).
+Then `CUA update`. MCP / sandbox / installers: README.
