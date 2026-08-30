@@ -20,6 +20,7 @@ Host desktop (Cua Driver) — default:
   install                        Run official cua-driver installer
   bin                            Print resolved cua-driver path
   guide                          Version-matched tool list (run once per session)
+  frameworks                     Toolkit playbook (Tauri / Electron / Flutter / canvas)
   docs [tools|mcp|cli|all]       Live docs from the binary (source of truth)
   doctor                         cua-driver doctor  (pass --json)
   status                         cua-driver status
@@ -173,6 +174,13 @@ cmd_guide() {
     die "list-tools failed. If the binary says it is an unknown command, this cua-driver is too old — run: cua-use update. Otherwise report the exact error; do not invent tools."
   fi
   info "next: cua-use describe <tool>   then   cua-use call <tool> '<json>'"
+  info "toolkit routing: cua-use frameworks"
+}
+
+cmd_frameworks() {
+  local f="$SKILL_DIR/references/frameworks.md"
+  [ -f "$f" ] || die "missing $f"
+  cat "$f"
 }
 
 cmd_docs() {
@@ -247,6 +255,7 @@ main() {
       resolve_driver || die "cua-driver not found"
       ;;
     guide) cmd_guide ;;
+    frameworks) cmd_frameworks ;;
     docs) cmd_docs "${1:-tools}" ;;
     doctor) driver doctor "$@" ;;
     status) driver status "$@" ;;

@@ -24,6 +24,7 @@ Host desktop (Cua Driver) — default:
   install                        Official installer
   bin                            Print cua-driver path
   guide                          Version-matched tool list (run once per session)
+  frameworks                     Toolkit playbook (Tauri / Electron / Flutter / canvas)
   docs [tools|mcp|cli|all]       Live docs from the binary
   doctor / status
   serve                          Start daemon
@@ -116,6 +117,12 @@ function Cmd-Guide {
     Info "next: cua-use.ps1 describe <tool>   then   cua-use.ps1 call <tool> '<json>'"
 }
 
+function Cmd-Frameworks {
+    $f = Join-Path $SkillDir "references\frameworks.md"
+    if (-not (Test-Path $f)) { Die "missing $f" }
+    Get-Content -Raw $f
+}
+
 function Cmd-Docs([string]$Kind) {
     switch ($Kind) {
         { $_ -in @("tools", "") } { Invoke-Driver list-tools }
@@ -150,6 +157,7 @@ switch ($cmd) {
         Write-Output $b
     }
     "guide" { Cmd-Guide }
+    "frameworks" { Cmd-Frameworks }
     "docs" {
         $kind = if ($rest.Count -ge 1) { $rest[0] } else { "tools" }
         Cmd-Docs $kind
