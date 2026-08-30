@@ -94,7 +94,9 @@ Agent：`"$CUA" frameworks` 或读 [references/frameworks.md](./references/frame
 
 先 `list_windows` 分类，再动手。Electron 的 AX 很大，加 `query` / `max_elements`。Web 上的 `type_text` 是 unverifiable，用截图确认。
 
-Cua Lab 标题是 **Cua Lab**。`Probe Surface Flutter` 会把计算器换成一块没有内部角色的 `Probe Canvas`。
+Cua Lab 标题是 **Cua Lab**（GTK / Qt 夹具用 `Cua Lab GTK` / `Cua Lab Qt`）。`Probe Surface Flutter` 会把计算器换成一块没有内部角色的 `Probe Canvas`。夹具在 [fixtures/cua-lab](./fixtures/cua-lab/)。Linux 复跑：`tests/linux-smoke.sh`。
+
+2026-08-30 云端 Linux 实证：真 Tauri 2 窗口走后台 AX；默认 Electron 没有 CDP、AX 只剩一个 frame，必须 `delivery_mode:foreground` 点像素；GTK / Qt 后台 AX 可用。macOS WKWebView 单节点 / CuaDriver.app 未在这台机器上验证。
 
 ## 先选一条路
 
@@ -124,6 +126,8 @@ $CUA = "$(Get-Location)\scripts\cua-use.ps1"
 ```
 
 `ensure` = 没有 `cua-driver` 就跑官方安装 → 拉起 daemon → `call list_apps`。能列出正在运行的应用 = 驱动已经能看到桌面。
+
+Linux：`cua-driver` 的 zbus **不能**连 `DBUS_SESSION_BUS_ADDRESS=autolaunch:`。包装脚本会改写成 `unix:path=…` 再 `serve`。自检：`"$CUA" session-bus` 和 `"$CUA" permissions status --json`（`atspi` 应为 true）。`doctor` 说 AT-SPI reachable 但 `get_window_state` 只有截图、没有控件 = 总线还是 autolaunch。
 
 官方一键安装（`ensure` 内部会调）：
 
@@ -191,7 +195,8 @@ irm https://cua.ai/driver/install.ps1 | iex
 "$CUA" docs [tools|mcp|cli|all]       # 二进制自带的活文档
 "$CUA" doctor [--json]                # 环境报告
 "$CUA" grant                          # macOS: permissions grant（经 CuaDriver.app）
-"$CUA" permissions status --json      # TCC。`status` 只表示 daemon
+"$CUA" permissions status --json      # TCC / Linux AT-SPI。`status` 只表示 daemon
+"$CUA" session-bus                    # Linux: 打印 unix:path 会话总线
 "$CUA" status                         # daemon 是否在听 socket
 "$CUA" serve                          # 只拉起 daemon
 "$CUA" stop                           # 停 daemon
@@ -264,7 +269,8 @@ cua sb create --os linux
 | `list_apps` 为空或失败 | `"$CUA" serve`，再 `"$CUA" doctor --json` |
 | `list-tools` / `guide` 未知命令 | `"$CUA" update`，二进制太旧 |
 | Agent 连不上 MCP | 用 `connect` 打印的绝对路径；重启客户端 |
-| Linux 点不到窗口 | 改用 X11 / XWayland；检查 AT-SPI |
+| Linux 点不到窗口 | 改用 X11 / XWayland；`"$CUA" session-bus`；Electron 用 `delivery_mode:foreground` |
+| `get_window_state` 只有截图 | daemon 的 D-Bus 是 `autolaunch:` → `"$CUA" ensure` |
 | Windows 窗口列表是空的 | 不要当服务跑 |
 | Python 3.14 装 cua 失败 | 换 3.12 / 3.13 |
 | 本地 sandbox 起不来 | Docker 是否在跑；需要 `local=True` |

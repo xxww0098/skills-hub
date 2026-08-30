@@ -16,17 +16,17 @@ usage() {
 Usage: cua-use <command> [args...]
 
 Host desktop (Cua Driver) — default:
-  ensure                         Install if missing, start daemon, probe list_apps
+  ensure                         Install if missing, start daemon, probe list_windows
   install                        Run official cua-driver installer
   bin                            Print resolved cua-driver path
   guide                          Version-matched tool list (run once per session)
   frameworks                     Toolkit playbook (Tauri / Electron / Flutter / canvas)
   docs [tools|mcp|cli|all]       Live docs from the binary (source of truth)
   doctor                         cua-driver doctor  (pass --json)
-  status                         cua-driver status
+  status                         Daemon liveness (`cua-driver status`)
   grant                          macOS: cua-driver permissions grant (via CuaDriver.app)
   permissions [status|grant]     TCC / OS permission probe (pass --json)
-  status                         Daemon liveness (`cua-driver status`)
+  session-bus                    Linux: resolve unix:path D-Bus (zbus rejects autolaunch:)
   stop                           Stop the daemon
   serve                          Start daemon (macOS via CuaDriver.app)
 
@@ -99,19 +99,94 @@ install_driver() {
   die "install finished but cua-driver is not on PATH (open a new terminal or source ~/.zshrc)"
 }
 
+# zbus (cua-driver 0.22.x) cannot open DBUS_SESSION_BUS_ADDRESS=autolaunch:.
+# Proven 2026-08-30 on cloud XFCE: get_window_state then degrades with
+#   atspi_walk_failed: Address("unsupported transport 'autolaunch'")
+# while doctor still says org.a11y.Bus is reachable. Screenshots still work.
+linux_session_bus() {
+  local addr="${DBUS_SESSION_BUS_ADDRESS:-}"
+  case "$addr" in
+    unix:path=*|unix:abstract=*)
+      printf '%s\n' "$addr"
+      return 0
+      ;;
+  esac
+  local mid disp file
+  mid="$(cat /etc/machine-id 2>/dev/null || cat /var/lib/dbus/machine-id 2>/dev/null || true)"
+  disp="${DISPLAY-}"
+  disp="${disp#:}"
+  disp="${disp%%.*}"
+  if [ -n "$mid" ] && [ -n "$disp" ]; then
+    file="${HOME}/.dbus/session-bus/${mid}-${disp}"
+    if [ -f "$file" ]; then
+      addr="$(sed -n "s/^DBUS_SESSION_BUS_ADDRESS='\\(.*\\)'/\\1/p" "$file" | head -1)"
+      case "$addr" in
+        unix:path=*|unix:abstract=*)
+          printf '%s\n' "$addr"
+          return 0
+          ;;
+      esac
+    fi
+  fi
+  local p
+  for p in $(pgrep -x at-spi-bus-launcher 2>/dev/null) $(pgrep -x xfce4-session 2>/dev/null) $(pgrep -x gnome-session 2>/dev/null); do
+    addr="$(tr '\0' '\n' < "/proc/$p/environ" 2>/dev/null | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p' | head -1)"
+    case "$addr" in
+      unix:path=*|unix:abstract=*)
+        printf '%s\n' "$addr"
+        return 0
+        ;;
+    esac
+  done
+  if [ -S "/run/user/$(id -u)/bus" ]; then
+    printf 'unix:path=/run/user/%s/bus\n' "$(id -u)"
+    return 0
+  fi
+  return 1
+}
+
+prepare_linux_session() {
+  is_linux || return 0
+  if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+    [ -S /tmp/.X11-unix/X1 ] && export DISPLAY=:1
+  fi
+  if [ -z "${XDG_RUNTIME_DIR:-}" ] && [ -d "/run/user/$(id -u)" ]; then
+    export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+  fi
+  local addr
+  if addr="$(linux_session_bus)"; then
+    export DBUS_SESSION_BUS_ADDRESS="$addr"
+  fi
+}
+
+linux_daemon_atspi_ok() {
+  local bin="$1"
+  local json
+  json="$("$bin" permissions status --json 2>/dev/null)" || return 1
+  printf '%s' "$json" | grep -q '"atspi": true'
+}
+
 driver() {
   local bin
   bin="$(resolve_driver)" || die "cua-driver not found. Run: cua-use install"
+  prepare_linux_session
   "$bin" "$@"
 }
 
 daemon_alive() {
   local bin="$1"
-  "$bin" call list_apps >/dev/null 2>&1
+  # Proven 2026-08-30 macOS 26.6.2: `call list_apps` hung ~90s even though
+  # CuaDriver.app serve was already up. `status` is daemon liveness.
+  # `list_windows` is the desktop probe we actually drive with.
+  if "$bin" status >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
 }
 
 start_daemon() {
   local bin="$1"
+  prepare_linux_session
   if is_darwin; then
     if [ -d /Applications/CuaDriver.app ]; then
       open -n -g -a CuaDriver --args serve
@@ -142,6 +217,13 @@ cmd_ensure() {
     bin="$(resolve_driver)" || die "cua-driver still missing after install"
   fi
 
+  prepare_linux_session
+  if is_linux && daemon_alive "$bin" && ! linux_daemon_atspi_ok "$bin"; then
+    info "daemon is up but AT-SPI is false — likely autolaunch: D-Bus. Restarting serve with a unix:path bus"
+    "$bin" stop >/dev/null 2>&1 || true
+    sleep 0.4
+  fi
+
   if ! daemon_alive "$bin"; then
     info "starting cua-driver daemon"
     start_daemon "$bin"
@@ -151,9 +233,13 @@ cmd_ensure() {
       die "daemon not ready (permissions or display session). See: cua-use doctor --json"
     fi
   fi
+  if is_linux && ! linux_daemon_atspi_ok "$bin"; then
+    info "warning: permissions status atspi=false. get_window_state will be screenshot-only. Run: cua-use session-bus"
+  fi
 
   "$bin" --version || true
-  "$bin" call list_apps
+  # Do not probe with list_apps — it can hang a minute-plus on macOS.
+  "$bin" call list_windows '{"on_screen_only": true}'
 }
 
 cmd_grant() {
@@ -281,6 +367,14 @@ main() {
     status) driver status "$@" ;;
     grant) cmd_grant ;;
     permissions) cmd_permissions "$@" ;;
+    session-bus)
+      is_linux || die "session-bus is Linux-only"
+      prepare_linux_session
+      linux_session_bus || die "no unix:path session bus (DBUS_SESSION_BUS_ADDRESS=autolaunch: is not usable by cua-driver)"
+      if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+        info "exported DBUS_SESSION_BUS_ADDRESS for this process"
+      fi
+      ;;
     serve) cmd_serve ;;
     stop) driver stop "$@" ;;
     call)
