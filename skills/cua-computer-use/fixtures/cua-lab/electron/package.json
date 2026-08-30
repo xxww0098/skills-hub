@@ -1,0 +1,10 @@
+{
+  "name": "cua-lab-electron",
+  "version": "0.1.0",
+  "private": true,
+  "main": "main.js",
+  "description": "Cua Lab Electron fixture — real BrowserWindow, not a mocked transcript",
+  "dependencies": {
+    "electron": "^36.2.0"
+  }
+}

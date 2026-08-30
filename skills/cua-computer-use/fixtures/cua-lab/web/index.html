@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Cua Lab</title>
+  <style>
+    :root { font-family: ui-sans-serif, system-ui, sans-serif; color: #111; background: #f4f1ea; }
+    body { margin: 16px; }
+    h1 { font-size: 20px; margin: 0 0 8px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; align-items: center; }
+    button, input, select { font-size: 14px; min-height: 32px; }
+    button { padding: 6px 10px; }
+    .pad { display: grid; grid-template-columns: repeat(4, 56px); gap: 6px; }
+    .log { min-height: 64px; width: 100%; background: #fff; border: 1px solid #bbb; padding: 6px; font: 12px/1.4 ui-monospace, monospace; white-space: pre-wrap; }
+    canvas { border: 1px solid #444; background: #1c1c1c; touch-action: none; }
+    .hidden { display: none !important; }
+    .result { font-size: 28px; font-weight: 700; min-width: 80px; }
+    fieldset { border: 1px solid #c4b8a4; padding: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Cua Lab</h1>
+  <div class="row" aria-label="Probe Surfaces">
+    <button id="surf-tauri" aria-label="Probe Surface Tauri" aria-pressed="true">Tauri</button>
+    <button id="surf-electron" aria-label="Probe Surface Electron" aria-pressed="false">Electron</button>
+    <button id="surf-flutter" aria-label="Probe Surface Flutter" aria-pressed="false">Flutter</button>
+    <button id="surf-canvas" aria-label="Probe Surface Canvas" aria-pressed="false">Canvas / Game</button>
+  </div>
+
+  <div class="row">
+    <span>Counter:</span>
+    <strong id="counter" aria-label="Probe Counter">0</strong>
+    <button id="inc" aria-label="Probe Increment">Increment</button>
+  </div>
+
+  <div class="row">
+    <label for="name">Name</label>
+    <input id="name" aria-label="Probe Name Field" />
+    <button id="submit" aria-label="Probe Submit">Submit</button>
+    <span id="hello" aria-label="Probe Hello"></span>
+  </div>
+
+  <div class="row">
+    <label for="gain">Gain</label>
+    <input id="gain" type="range" min="0" max="100" value="25" aria-label="Probe Gain" />
+    <span id="gain-val" aria-label="Probe Gain Value">25</span>
+  </div>
+
+  <div class="row">
+    <button id="row-alpha" aria-label="Probe Row Alpha">Row Alpha</button>
+    <button id="row-beta" aria-label="Probe Row Beta">Row Beta</button>
+    <span id="row-out" aria-label="Probe Row">none</span>
+  </div>
+
+  <fieldset id="ax-calc">
+    <legend>AX keypad</legend>
+    <div class="row">
+      <span>Result:</span>
+      <span id="result" class="result" aria-label="Probe Result">0</span>
+    </div>
+    <div class="pad" id="keys">
+      <button aria-label="Probe Key 7">7</button>
+      <button aria-label="Probe Key 8">8</button>
+      <button aria-label="Probe Key 9">9</button>
+      <button aria-label="Divide">/</button>
+      <button aria-label="Probe Key 4">4</button>
+      <button aria-label="Probe Key 5">5</button>
+      <button aria-label="Probe Key 6">6</button>
+      <button aria-label="Multiply">×</button>
+      <button aria-label="Probe Key 1">1</button>
+      <button aria-label="Probe Key 2">2</button>
+      <button aria-label="Probe Key 3">3</button>
+      <button aria-label="Minus">−</button>
+      <button aria-label="Probe Key 0">0</button>
+      <button aria-label="Clear">C</button>
+      <button aria-label="Equals">=</button>
+      <button aria-label="Plus">+</button>
+    </div>
+  </fieldset>
+
+  <fieldset id="paint-wrap" class="hidden">
+    <legend>Painted keypad (no inner AX)</legend>
+    <canvas id="canvas" width="280" height="280" aria-label="Probe Canvas" role="img"></canvas>
+  </fieldset>
+
+  <div id="log" class="log" aria-label="Probe Log">ready</div>
+
+  <script>
+    const logEl = document.getElementById("log");
+    const resultEl = document.getElementById("result");
+    const counterEl = document.getElementById("counter");
+    const axCalc = document.getElementById("ax-calc");
+    const paintWrap = document.getElementById("paint-wrap");
+    const canvas = document.getElementById("canvas");
+    let acc = 0;
+    let pending = null;
+    let op = null;
+    let fresh = true;
+    let counter = 0;
+    let surface = "tauri";
+
+    function log(msg) {
+      logEl.textContent = String(msg);
+      document.title = "Cua Lab";
+    }
+
+    function setSurface(name) {
+      surface = name;
+      const paint = name === "flutter" || name === "canvas";
+      axCalc.classList.toggle("hidden", paint);
+      paintWrap.classList.toggle("hidden", !paint);
+      document.querySelectorAll("#surf-tauri, #surf-electron, #surf-flutter, #surf-canvas").forEach((b) => {
+        b.setAttribute("aria-pressed", b.id === "surf-" + name ? "true" : "false");
+      });
+      log("surface=" + name);
+      if (paint) drawPad();
+    }
+
+    document.getElementById("surf-tauri").onclick = () => setSurface("tauri");
+    document.getElementById("surf-electron").onclick = () => setSurface("electron");
+    document.getElementById("surf-flutter").onclick = () => setSurface("flutter");
+    document.getElementById("surf-canvas").onclick = () => setSurface("canvas");
+
+    document.getElementById("inc").onclick = () => {
+      counter += 1;
+      counterEl.textContent = String(counter);
+      log("increment=" + counter);
+    };
+
+    document.getElementById("submit").onclick = () => {
+      const v = document.getElementById("name").value;
+      document.getElementById("hello").textContent = "hello " + v;
+      log("submit=" + v);
+    };
+
+    document.getElementById("gain").oninput = (e) => {
+      document.getElementById("gain-val").textContent = e.target.value;
+      log("gain=" + e.target.value);
+    };
+
+    document.getElementById("row-alpha").onclick = () => {
+      document.getElementById("row-out").textContent = "alpha";
+      log("row=alpha");
+    };
+    document.getElementById("row-beta").onclick = () => {
+      document.getElementById("row-out").textContent = "beta";
+      log("row=beta");
+    };
+
+    function apply(n) {
+      const x = Number(n);
+      if (op === "mul") acc = acc * x;
+      else if (op === "add") acc = acc + x;
+      else if (op === "sub") acc = acc - x;
+      else if (op === "div") acc = x === 0 ? NaN : acc / x;
+      else acc = x;
+      op = null;
+      pending = null;
+      fresh = true;
+      resultEl.textContent = String(acc);
+      log("result=" + acc);
+    }
+
+    function digit(d) {
+      if (fresh) { pending = 0; fresh = false; }
+      pending = (pending || 0) * 10 + d;
+      resultEl.textContent = String(pending);
+      log("digit=" + d);
+    }
+
+    document.getElementById("keys").addEventListener("click", (e) => {
+      const t = e.target;
+      if (t.tagName !== "BUTTON") return;
+      const label = t.getAttribute("aria-label");
+      handleKey(label);
+    });
+
+    function handleKey(label) {
+      if (label.startsWith("Probe Key ")) digit(Number(label.slice(10)));
+      else if (label === "Multiply") { acc = pending == null ? acc : pending; op = "mul"; fresh = true; log("op=*"); }
+      else if (label === "Plus") { acc = pending == null ? acc : pending; op = "add"; fresh = true; log("op=+"); }
+      else if (label === "Minus") { acc = pending == null ? acc : pending; op = "sub"; fresh = true; log("op=-"); }
+      else if (label === "Divide") { acc = pending == null ? acc : pending; op = "div"; fresh = true; log("op=/"); }
+      else if (label === "Equals") apply(pending == null ? acc : pending);
+      else if (label === "Clear") { acc = 0; pending = null; op = null; fresh = true; resultEl.textContent = "0"; log("clear"); }
+    }
+
+    const cells = [
+      ["7", "Probe Key 7"], ["8", "Probe Key 8"], ["9", "Probe Key 9"], ["/", "Divide"],
+      ["4", "Probe Key 4"], ["5", "Probe Key 5"], ["6", "Probe Key 6"], ["×", "Multiply"],
+      ["1", "Probe Key 1"], ["2", "Probe Key 2"], ["3", "Probe Key 3"], ["−", "Minus"],
+      ["0", "Probe Key 0"], ["C", "Clear"], ["=", "Equals"], ["+", "Plus"],
+    ];
+
+    function drawPad() {
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width, h = canvas.height;
+      ctx.fillStyle = "#1c1c1c";
+      ctx.fillRect(0, 0, w, h);
+      const cw = w / 4, ch = h / 4;
+      cells.forEach((cell, i) => {
+        const x = (i % 4) * cw, y = Math.floor(i / 4) * ch;
+        ctx.strokeStyle = "#888";
+        ctx.strokeRect(x + 2, y + 2, cw - 4, ch - 4);
+        ctx.fillStyle = "#f2f2f2";
+        ctx.font = "22px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(cell[0], x + cw / 2, y + ch / 2);
+      });
+    }
+
+    canvas.addEventListener("click", (e) => {
+      const r = canvas.getBoundingClientRect();
+      const x = (e.clientX - r.left) * (canvas.width / r.width);
+      const y = (e.clientY - r.top) * (canvas.height / r.height);
+      const col = Math.min(3, Math.floor(x / (canvas.width / 4)));
+      const row = Math.min(3, Math.floor(y / (canvas.height / 4)));
+      const cell = cells[row * 4 + col];
+      handleKey(cell[1]);
+      drawPad();
+    });
+
+    setSurface("tauri");
+  </script>
+</body>
+</html>

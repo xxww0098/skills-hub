@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "Cua Lab fixture — no privileged APIs",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

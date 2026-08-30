@@ -16,7 +16,7 @@ Personal skill repository for agent automation.
 
 CuaDriver **在 macOS 上是 App**（`/Applications/CuaDriver.app`），用来拿辅助功能 / 屏幕录制权限并跑守护进程。人和 Agent 日常敲的是旁边的 **`cua-driver` CLI**，不是打开这个 App 去点界面。Windows / Linux 没有这种 GUI App，只有 CLI + 后台 daemon。
 
-人看 [skills/cua-computer-use/README.md](./skills/cua-computer-use/README.md)，Agent 看 [SKILL.md](./skills/cua-computer-use/SKILL.md)。
+人看 [skills/cua-computer-use/README.md](./skills/cua-computer-use/README.md)，Agent 看 [SKILL.md](./skills/cua-computer-use/SKILL.md)。Linux 复跑夹具：`skills/cua-computer-use/tests/linux-smoke.sh`。
 
 ```bash
 CUA=skills/cua-computer-use/scripts/cua-use
