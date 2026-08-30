@@ -1,0 +1,266 @@
+#!/usr/bin/env bash
+# cua-use — skill CLI for Cua Computer Use 2.0 (Cua Driver + optional Sandbox)
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+export PATH="${HOME}/.local/bin:/usr/local/bin:${PATH}"
+
+OS="$(uname -s 2>/dev/null || echo unknown)"
+
+die() { printf 'cua-use: %s\n' "$*" >&2; exit 1; }
+info() { printf 'cua-use: %s\n' "$*" >&2; }
+
+usage() {
+  cat <<'EOF'
+Usage: cua-use <command> [args...]
+
+Host desktop (Cua Driver) — default:
+  ensure                         Install if missing, start daemon, probe list_apps
+  install                        Run official cua-driver installer
+  bin                            Print resolved cua-driver path
+  doctor                         cua-driver doctor
+  status                         cua-driver status
+  grant                          macOS Accessibility + Screen Recording prompts
+  serve                          Start daemon (macOS via CuaDriver.app)
+  call <tool> [json]             Invoke a driver tool (requires daemon)
+  list-tools                     List MCP/CLI tools
+  describe <tool>                Describe one tool
+  connect [client]               skills install + print MCP config
+                                 client: claude|cursor|codex|generic
+  skills [install|status]        Manage official Cua agent skill pack
+  mcp-config [--client NAME]     Print client MCP registration
+  update                         cua-driver update --apply
+  telemetry-disable              cua-driver telemetry disable
+
+Isolated sandbox:
+  sandbox-install                pip install cua (Python 3.12/3.13)
+  sandbox-smoke                  Ephemeral local Linux sandbox hello
+
+Passthrough:
+  -- <args...>                   Raw cua-driver args
+
+Examples:
+  cua-use ensure
+  cua-use call list_apps
+  cua-use call launch_app '{"name":"Calculator"}'
+  cua-use connect claude
+EOF
+}
+
+is_darwin() { [ "$OS" = Darwin ]; }
+is_linux() { [ "$OS" = Linux ]; }
+is_windows_bash() { case "$OS" in MINGW*|MSYS*|CYGWIN*) return 0 ;; *) return 1 ;; esac; }
+
+resolve_driver() {
+  if [ -n "${CUA_DRIVER_BIN:-}" ] && [ -x "$CUA_DRIVER_BIN" ]; then
+    printf '%s\n' "$CUA_DRIVER_BIN"
+    return 0
+  fi
+  if command -v cua-driver >/dev/null 2>&1; then
+    command -v cua-driver
+    return 0
+  fi
+  local cand
+  for cand in "${HOME}/.local/bin/cua-driver" /usr/local/bin/cua-driver; do
+    if [ -x "$cand" ]; then
+      printf '%s\n' "$cand"
+      return 0
+    fi
+  done
+  return 1
+}
+
+install_driver() {
+  if is_windows_bash; then
+    die "in Git Bash/MSYS use scripts/cua-use.ps1, or PowerShell: irm https://cua.ai/driver/install.ps1 | iex"
+  fi
+  command -v curl >/dev/null 2>&1 || die "curl is required to install cua-driver"
+  info "installing cua-driver via https://cua.ai/driver/install.sh"
+  /bin/bash -c "$(curl -fsSL https://cua.ai/driver/install.sh)"
+  hash -r 2>/dev/null || true
+  resolve_driver >/dev/null || die "install finished but cua-driver is not on PATH (open a new terminal or source ~/.zshrc)"
+}
+
+driver() {
+  local bin
+  bin="$(resolve_driver)" || die "cua-driver not found. Run: cua-use install"
+  "$bin" "$@"
+}
+
+daemon_alive() {
+  local bin="$1"
+  "$bin" call list_apps >/dev/null 2>&1
+}
+
+start_daemon() {
+  local bin="$1"
+  if is_darwin; then
+    if [ -d /Applications/CuaDriver.app ]; then
+      open -n -g -a CuaDriver --args serve
+    else
+      "$bin" serve >/dev/null 2>&1 &
+    fi
+  else
+    "$bin" serve >/dev/null 2>&1 &
+  fi
+}
+
+wait_daemon() {
+  local bin="$1"
+  local i
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    if daemon_alive "$bin"; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+cmd_ensure() {
+  local bin
+  if ! bin="$(resolve_driver)"; then
+    install_driver
+    bin="$(resolve_driver)" || die "cua-driver still missing after install"
+  fi
+
+  if ! daemon_alive "$bin"; then
+    info "starting cua-driver daemon"
+    start_daemon "$bin"
+    if ! wait_daemon "$bin"; then
+      info "daemon did not become ready. On macOS run: cua-use grant"
+      "$bin" doctor || true
+      die "daemon not ready (permissions or display session). See: cua-use doctor"
+    fi
+  fi
+
+  "$bin" --version || true
+  "$bin" call list_apps
+}
+
+cmd_grant() {
+  is_darwin || die "grant is macOS-only (Accessibility + Screen Recording)"
+  local bin
+  bin="$(resolve_driver)" || die "install cua-driver first: cua-use install"
+  if [ -d /Applications/CuaDriver.app ]; then
+    open -n -g -a CuaDriver --args serve
+  else
+    start_daemon "$bin"
+  fi
+  sleep 1
+  "$bin" grant
+  "$bin" status || true
+  info "toggle Accessibility and Screen Recording ON in System Settings, then re-run: cua-use status"
+}
+
+cmd_serve() {
+  local bin
+  bin="$(resolve_driver)" || die "install cua-driver first: cua-use install"
+  start_daemon "$bin"
+  wait_daemon "$bin" || die "daemon failed to start"
+  info "daemon ready"
+}
+
+cmd_connect() {
+  local client="${1:-generic}"
+  driver skills install
+  case "$client" in
+    claude|cursor|codex|antigravity|opencode|openclaw|pi|qwen|droid|zcode|prime-agent)
+      driver mcp-config --client "$client"
+      ;;
+    generic|"")
+      driver mcp-config
+      ;;
+    *)
+      info "unknown client '$client'; printing generic MCP JSON"
+      driver mcp-config
+      ;;
+  esac
+  driver skills status || true
+}
+
+cmd_sandbox_install() {
+  command -v python3 >/dev/null 2>&1 || die "python3 not found"
+  local ver
+  ver="$(python3 -c 'import sys; print("%d.%d"%sys.version_info[:2])')"
+  case "$ver" in
+    3.12|3.13) ;;
+    *) die "need Python 3.12 or 3.13 (found $ver). Do not use 3.14." ;;
+  esac
+  python3 -m pip install -U cua
+}
+
+cmd_sandbox_smoke() {
+  command -v python3 >/dev/null 2>&1 || die "python3 not found"
+  python3 - <<'PY'
+import asyncio
+from cua import Sandbox, Image
+
+async def main():
+    async with Sandbox.ephemeral(Image.linux(), local=True) as sb:
+        r = await sb.shell.run("echo hello")
+        print(getattr(r, "stdout", r))
+        await sb.screenshot()
+        print("sandbox smoke: ok")
+
+asyncio.run(main())
+PY
+}
+
+main() {
+  local cmd="${1:-}"
+  if [ -z "$cmd" ] || [ "$cmd" = "-h" ] || [ "$cmd" = "--help" ]; then
+    usage
+    exit 0
+  fi
+  shift || true
+
+  case "$cmd" in
+    ensure) cmd_ensure ;;
+    install) install_driver; resolve_driver ;;
+    bin)
+      resolve_driver || die "cua-driver not found"
+      ;;
+    doctor) driver doctor "$@" ;;
+    status) driver status "$@" ;;
+    grant) cmd_grant ;;
+    serve) cmd_serve ;;
+    call)
+      [ "$#" -ge 1 ] || die "usage: cua-use call <tool> [json]"
+      driver call "$@"
+      ;;
+    list-tools) driver list-tools "$@" ;;
+    describe)
+      [ "$#" -ge 1 ] || die "usage: cua-use describe <tool>"
+      driver describe "$@"
+      ;;
+    connect) cmd_connect "${1:-generic}" ;;
+    skills)
+      local sub="${1:-status}"
+      shift || true
+      case "$sub" in
+        install) driver skills install "$@" ;;
+        status) driver skills status "$@" ;;
+        *) driver skills "$sub" "$@" ;;
+      esac
+      ;;
+    mcp-config) driver mcp-config "$@" ;;
+    update) driver update --apply "$@" ;;
+    telemetry-disable) driver telemetry disable ;;
+    sandbox-install) cmd_sandbox_install ;;
+    sandbox-smoke) cmd_sandbox_smoke ;;
+    --) driver "$@" ;;
+    *)
+      # Convenience: cua-use list_apps → cua-driver call list_apps
+      if resolve_driver >/dev/null 2>&1; then
+        driver call "$cmd" "$@"
+      else
+        usage
+        die "unknown command '$cmd' (and cua-driver not installed). Try: cua-use ensure"
+      fi
+      ;;
+  esac
+}
+
+main "$@"

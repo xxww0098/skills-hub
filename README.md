@@ -7,6 +7,7 @@ Personal skill repository for agent automation.
 | Category | Skill | Description | Status |
 |:--------:|:------|:------------|:------:|
 | 🤖 Automation | [real-browser](./skills/real-browser) | Browser automation using real Chrome with CDP | ✅ Active |
+| 🖥 Computer Use | [cua-computer-use](./skills/cua-computer-use) | Cua Driver skill + CLI: background desktop control, or isolated sandbox | ✅ Active |
 | 🔧 Extension | [crxhub-cli](./skills/crxhub-cli) | Manage browser extensions from GitHub Releases | ✅ Active |
 | 📦 Package | [npmjs-cli](./skills/npmjs-cli) | Manage npm registry operations and package lifecycle | ✅ Active |
 | 🐙 GitHub | [gh-cli](./skills/gh-cli) | GitHub CLI and Git daily dev workflow | ✅ Active |
