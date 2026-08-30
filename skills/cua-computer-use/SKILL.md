@@ -6,9 +6,10 @@ description: >-
   steal the user's cursor. Use for list apps/windows, get window state, read
   visible UI, click, type, press keys, scroll, drag, set values, launch apps,
   or screenshot. Also use for browser windows, webviews, Slack, Spotify,
-  Calculator, and other desktop UI. Triggers include "computer use",
-  "cua-driver", "cua computer", "read Slack", "read Spotify", "get app state",
-  "后台点窗口", "本机操控", "打开计算器", and "computer-use".
+  Calculator, Tauri `dev` windows, and other desktop UI. Triggers include
+  "computer use", "cua-driver", "cua computer", "read Slack", "read Spotify",
+  "get app state", "tauri", "tauri dev", "后台点窗口", "本机操控", "打开计算器",
+  and "computer-use".
 argument-hint: <command> [args...]
 ---
 
@@ -18,7 +19,7 @@ This file is a **discovery stub + policy**, not the tool catalog.
 Live tool names, flags, and JSON schemas come from the `cua-driver` binary
 that will actually run — so this file cannot drift from the installed version.
 
-Not Anthropic's Computer Use API. Human install / App-vs-CLI notes: [README.md](./README.md).
+Not Anthropic's Computer Use API. Human install / App-vs-CLI / Tauri notes: [README.md](./README.md).
 
 ## Resolve the CLI once
 
@@ -70,7 +71,8 @@ Then call the specific tool you just described:
 CUA call <tool> '<json>'
 ```
 
-`call` requires the daemon (`ensure` first). Prefer `element_index` / AX over raw coordinates.
+`call` requires the daemon (`ensure` first). Prefer `element_index` / AX over raw coordinates
+**except inside embedded webviews** (see Tauri below).
 
 ## Drive policy (this skill owns this; the binary does not)
 
@@ -87,12 +89,44 @@ Rules:
 
 1. `ensure` + `guide` once per session before the first `call`.
 2. `describe` a tool before first use in the session if the schema is unclear.
-3. Stay in the background. Do not `bring_to_front` unless the user asks.
+3. Stay in the background. Do not `bring_to_front` unless the user asks **or** a webview ignores background typing.
 4. Do not click the user's frontmost editor.
 5. Login / password / payment / corp-intranet windows: ask first.
 6. Do not `kill_app` unless the user explicitly wants the process ended.
 7. Do not invent tools. If `list-tools` does not list it, stop.
 8. Agents must use `CUA call <tool> …`. Do not rely on unknown-subcommand fallthrough.
+
+## Tauri `dev` / embedded webview
+
+`tauri dev` is a **real OS window** wrapping WKWebView (macOS), WebView2 (Windows),
+or WebKitGTK (Linux). Cua can attach to that window. It cannot Playwright-drive
+the DOM unless an inspector/CDP endpoint was opened at launch.
+
+1. Match the window by **title / productName** (fixture: `Cua Lab`). Process is the
+   debug binary, not the Vite process.
+2. `get_window_state`. If AX exposes unique names, click by `element_index`.
+3. If the tree is one WebView / HTMLContent blob (typical on macOS WKWebView),
+   **do not invent AX roles**. Screenshot and click coordinates.
+4. `type_text` into web inputs is often unverifiable in the background.
+   If the field does not change, `bring_to_front` once, then type, then leave.
+5. Verify from the screenshot of a named result (`Probe Result`, `Probe Log`),
+   not from hoping AX updated.
+6. Vite HMR keeps the same window. A Rust rebuild **changes PID** — list again.
+7. Only if you are **launching** the app (not attaching to an already-running
+   `tauri dev`): `describe launch_app` and pass `webkit_inspector_port` when the
+   schema has it. That sets `WEBKIT_INSPECTOR_SERVER` + `TAURI_WEBVIEW_AUTOMATION`.
+   Do not assume an already-running `tauri dev` has those env vars.
+
+Fixture accessible names (Cua Lab): `Probe Increment`, `Probe Decrement`,
+`Probe Reset`, `Probe Count`, `Probe Name Field`, `Probe Submit`,
+`Probe Key 6`, `Probe Key 7`, `Probe Key Multiply`, `Probe Key Equals`,
+`Probe Result`, `Probe Arm Switch`, `Probe Log`.
+
+Smoke: click `Probe Key 6`, `Probe Key Multiply`, `Probe Key 7`,
+`Probe Key Equals` → `Probe Result` reads `42`.
+
+`browser_prepare` is for Chrome/Edge/Electron. Do not use it on a Tauri window
+unless `describe` / `get_browser_state` actually binds that PID.
 
 ## Bounded fallback (old cua-driver only)
 

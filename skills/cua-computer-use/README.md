@@ -78,6 +78,27 @@ SKILL.md 学 [Orca computer-use](https://github.com/stablyai/orca/blob/main/skil
 
 ---
 
+## 驱动 Tauri `dev` 窗口
+
+`tauri dev` 弹的是**真系统窗口**，里面是系统 WebView（macOS WKWebView / Windows WebView2 / Linux WebKitGTK）。Cua 能附着这个窗口，默认**不能**像 Playwright 那样按 DOM 选节点。
+
+本仓库的 fixture 窗口标题 / `productName` 是 **Cua Lab**。每个控件有唯一 `aria-label`（`Probe Increment`、`Probe Key 6`…）。在 Chromium/WebView2 里这些名字会出现在 AX 树；在 macOS WKWebView 里常常塌成一块 HTMLContent —— 那时改截图坐标，不要编造 AX 角色。
+
+```bash
+"$CUA" ensure && "$CUA" guide
+"$CUA" call list_windows '{"on_screen_only": true}'   # 标题匹配 Cua Lab
+"$CUA" call get_window_state '{"pid":PID,"window_id":WID}'
+# AX 有 Probe* 名字 → element_index
+# 只有一块 WebView → screenshot + 坐标
+# 输入框打不上字 → 允许一次 bring_to_front
+```
+
+冒烟：`Probe Key 6` → `Probe Key Multiply` → `Probe Key 7` → `Probe Key Equals`，`Probe Result` 为 `42`。
+
+- Vite HMR 不换窗口；Rust 重编会换 PID，要重新 list。
+- `webkit_inspector_port` 只在 **Cua 自己 launch_app** 时有意义，已经手动 `tauri dev` 的窗口通常没有 `TAURI_WEBVIEW_AUTOMATION`。
+- `browser_prepare` 认 Chrome/Edge/Electron，不要默认用在 Tauri PID 上。
+
 ## 先选一条路
 
 | 你想做什么 | 装什么 |
