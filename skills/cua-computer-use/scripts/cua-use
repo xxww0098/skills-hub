@@ -19,13 +19,15 @@ Host desktop (Cua Driver) — default:
   ensure                         Install if missing, start daemon, probe list_apps
   install                        Run official cua-driver installer
   bin                            Print resolved cua-driver path
-  doctor                         cua-driver doctor
+  guide                          Version-matched tool list (run once per session)
+  docs [tools|mcp|cli|all]       Live docs from the binary (source of truth)
+  doctor                         cua-driver doctor  (pass --json)
   status                         cua-driver status
   grant                          macOS Accessibility + Screen Recording prompts
   serve                          Start daemon (macOS via CuaDriver.app)
   call <tool> [json]             Invoke a driver tool (requires daemon)
   list-tools                     List MCP/CLI tools
-  describe <tool>                Describe one tool
+  describe <tool>                Describe one tool schema
   connect [client]               skills install + print MCP config
                                  client: claude|cursor|codex|generic
   skills [install|status]        Manage official Cua agent skill pack
@@ -41,7 +43,8 @@ Passthrough:
   -- <args...>                   Raw cua-driver args
 
 Examples:
-  cua-use ensure
+  cua-use ensure && cua-use guide
+  cua-use describe click
   cua-use call list_apps
   cua-use call launch_app '{"name":"Calculator"}'
   cua-use connect claude
@@ -130,8 +133,8 @@ cmd_ensure() {
     start_daemon "$bin"
     if ! wait_daemon "$bin"; then
       info "daemon did not become ready. On macOS run: cua-use grant"
-      "$bin" doctor || true
-      die "daemon not ready (permissions or display session). See: cua-use doctor"
+      "$bin" doctor --json 2>/dev/null || "$bin" doctor || true
+      die "daemon not ready (permissions or display session). See: cua-use doctor --json"
     fi
   fi
 
@@ -160,6 +163,27 @@ cmd_serve() {
   start_daemon "$bin"
   wait_daemon "$bin" || die "daemon failed to start"
   info "daemon ready"
+}
+
+cmd_guide() {
+  local bin
+  bin="$(resolve_driver)" || die "cua-driver not found. Run: cua-use ensure"
+  "$bin" --version || true
+  if ! "$bin" list-tools; then
+    die "list-tools failed. If the binary says it is an unknown command, this cua-driver is too old — run: cua-use update. Otherwise report the exact error; do not invent tools."
+  fi
+  info "next: cua-use describe <tool>   then   cua-use call <tool> '<json>'"
+}
+
+cmd_docs() {
+  local kind="${1:-tools}"
+  case "$kind" in
+    tools|"" ) driver list-tools ;;
+    mcp) driver dump-docs --type mcp -p ;;
+    cli) driver dump-docs --type cli -p ;;
+    all) driver dump-docs --type all -p ;;
+    *) die "usage: cua-use docs [tools|mcp|cli|all]" ;;
+  esac
 }
 
 cmd_connect() {
@@ -222,6 +246,8 @@ main() {
     bin)
       resolve_driver || die "cua-driver not found"
       ;;
+    guide) cmd_guide ;;
+    docs) cmd_docs "${1:-tools}" ;;
     doctor) driver doctor "$@" ;;
     status) driver status "$@" ;;
     grant) cmd_grant ;;
@@ -252,13 +278,8 @@ main() {
     sandbox-smoke) cmd_sandbox_smoke ;;
     --) driver "$@" ;;
     *)
-      # Convenience: cua-use list_apps → cua-driver call list_apps
-      if resolve_driver >/dev/null 2>&1; then
-        driver call "$cmd" "$@"
-      else
-        usage
-        die "unknown command '$cmd' (and cua-driver not installed). Try: cua-use ensure"
-      fi
+      usage
+      die "unknown command '$cmd'. Agents: run 'cua-use guide' then 'cua-use call <tool>'. Humans: 'cua-use -- <cua-driver args>'"
       ;;
   esac
 }

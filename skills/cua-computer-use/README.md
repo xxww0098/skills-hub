@@ -5,7 +5,8 @@
 Computer Use 2.0 不是一个独立软件包，而是 [Cua](https://cua.ai) 的能力。
 **不是** Anthropic 官方 Claude「Computer Use」API。
 
-Agent 说明看 [SKILL.md](./SKILL.md)。本 README 给人读。
+- 人看本文。
+- Agent 看 [SKILL.md](./SKILL.md)（发现用 stub）。**工具名 / JSON schema 以本机 `cua-driver` 为准**，不要背 SKILL 里过期的命令表。
 
 ---
 
@@ -35,12 +36,12 @@ CuaDriver.app          ← App（权限 + 后台服务）
 你 / Agent
     │
     ├─ 本仓库 skill（cua-computer-use）
-    │     SKILL.md          ← 教 Agent 怎么选命令
-    │     scripts/cua-use   ← 包装 CLI（macOS / Linux）
+    │     SKILL.md            ← 发现 + 策略（不写死工具表）
+    │     scripts/cua-use     ← 包装 CLI（macOS / Linux）
     │     scripts/cua-use.ps1
     │              │
     │              ▼
-    ├─ cua-driver CLI      ← 官方命令：call / doctor / mcp / skills
+    ├─ cua-driver CLI         ← 官方命令：call / list-tools / describe / dump-docs
     │              │
     │              ▼
     └─ CuaDriver daemon
@@ -54,18 +55,26 @@ CuaDriver.app          ← App（权限 + 后台服务）
 | 名字 | 是 App 吗 | 职责 |
 |------|-----------|------|
 | **CuaDriver.app** | ✅ 仅 macOS | 系统身份、TCC 权限、守护进程 |
-| **`cua-driver`** | ❌ CLI | `call list_apps`、`call click`、MCP stdio |
-| **本 skill `cua-use`** | ❌ 包装脚本 | 一条命令完成安装 / 拉起 daemon / 调用工具 |
-| **MCP** | ❌ 协议 | 可选。客户端更吃 MCP 时再接 |
-| **Sandbox（`pip install cua`）** | ❌ 隔离虚拟机 | 不想碰本机文件/账号时走这条 |
+| **`cua-driver`** | ❌ CLI | `call`、`list-tools`、`describe`、MCP stdio |
+| **本 skill `cua-use`** | ❌ 包装脚本 | `ensure` / `guide` / `call` |
+| **MCP** | ❌ 协议 | 可选 |
+| **Sandbox（`pip install cua`）** | ❌ 隔离虚拟机 | 不想碰本机时走这条 |
 
 三种驱动方式走同一套工具，本 skill **默认 CLI**：
 
 | 模式 | 怎么调 | 何时用 |
 |------|--------|--------|
 | **CLI（默认）** | `scripts/cua-use call …` | 任何能跑 shell 的 Agent |
-| **官方 skill pack** | `cua-use connect claude` | 给 Agent 补「怎么选工具、怎么验证」 |
-| **MCP** | `connect` 打印注册命令，再贴进客户端 | Claude / Cursor / Codex 要 MCP 工具时 |
+| **Cua 官方 skill pack** | `cua-use connect claude` | 给 Agent 补「怎么选工具、怎么验证」 |
+| **MCP** | `connect` 打印注册命令，再贴进客户端 | 客户端要 MCP 工具时 |
+
+SKILL.md 学 [Orca computer-use](https://github.com/stablyai/orca/blob/main/skills/computer-use/SKILL.md)：只做发现和策略。完整工具面用：
+
+```bash
+"$CUA" guide          # 当前二进制的 list-tools
+"$CUA" describe click
+"$CUA" docs mcp       # dump-docs --type mcp
+```
 
 ---
 
@@ -82,19 +91,18 @@ CuaDriver.app          ← App（权限 + 后台服务）
 
 一般 **不需要管理员权限**。macOS 要求 14+（Sonoma）。
 
-本 skill 包装器（推荐）：
-
 ```bash
 # macOS / Linux
 CUA="$(pwd)/scripts/cua-use"   # 或 skill 安装后的 SKILL_DIR
 chmod +x "$CUA"
-"$CUA" ensure
+"$CUA" ensure && "$CUA" guide
 ```
 
 ```powershell
 # Windows
 $CUA = "$(Get-Location)\scripts\cua-use.ps1"
 & $CUA ensure
+& $CUA guide
 ```
 
 `ensure` = 没有 `cua-driver` 就跑官方安装 → 拉起 daemon → `call list_apps`。能列出正在运行的应用 = 驱动已经能看到桌面。
@@ -134,8 +142,8 @@ irm https://cua.ai/driver/install.ps1 | iex
 ## 快速开始
 
 ```bash
-"$CUA" ensure
-"$CUA" call list_apps
+"$CUA" ensure && "$CUA" guide
+"$CUA" describe launch_app
 "$CUA" call launch_app '{"name":"Calculator"}'
 ```
 
@@ -156,13 +164,15 @@ irm https://cua.ai/driver/install.ps1 | iex
 
 ## 本 skill 的 CLI
 
-`scripts/cua-use`（Windows 用 `cua-use.ps1`）包一层官方 `cua-driver`。先 `ensure`，再 `call`。
+`scripts/cua-use`（Windows 用 `cua-use.ps1`）包一层官方 `cua-driver`。先 `ensure`，再 `guide`，再 `call`。
 
 ```bash
 "$CUA" ensure                         # 安装 + daemon + list_apps
 "$CUA" install                        # 只跑官方安装
 "$CUA" bin                            # cua-driver 路径
-"$CUA" doctor                         # 环境报告
+"$CUA" guide                          # --version + list-tools（每个会话跑一次）
+"$CUA" docs [tools|mcp|cli|all]       # 二进制自带的活文档
+"$CUA" doctor [--json]                # 环境报告
 "$CUA" status                         # macOS 权限
 "$CUA" grant                          # macOS 授权提示
 "$CUA" serve                          # 只拉起 daemon
@@ -177,19 +187,9 @@ irm https://cua.ai/driver/install.ps1 | iex
 "$CUA" -- <raw cua-driver args>       # 透传
 ```
 
-未知子命令当成 tool 名：`"$CUA" list_apps` ≡ `"$CUA" call list_apps`。
+Windows 把 `"$CUA"` 换成 `& $CUA`。覆盖二进制：`export CUA_DRIVER_BIN=/path/to/cua-driver`。
 
-覆盖二进制：`export CUA_DRIVER_BIN=/path/to/cua-driver`。
-
-Agent 驱动循环（inspect → act → verify）：
-
-```bash
-"$CUA" call list_windows '{"on_screen_only": true}'
-"$CUA" call get_window_state '{"pid":PID,"window_id":WID}'
-"$CUA" call click '{"pid":PID,"window_id":WID,"element_index":N}'
-"$CUA" call type_text '{"text":"hello","pid":PID}'
-"$CUA" call press_key '{"key":"return","pid":PID}'
-```
+Agent 策略（inspect → act → verify）写在 SKILL.md。具体参数以 `describe` 为准，不要抄过期示例。
 
 规则：先列窗口，再点；优先 `element_index`，不要盲点坐标；默认不 `bring_to_front`；密码 / 支付 / 公司内网窗口先问用户。
 
@@ -242,7 +242,8 @@ cua sb create --os linux
 |------|------|
 | `cua-driver: command not found` | `"$CUA" install`；新开终端；`source ~/.zshrc` |
 | macOS `status` 为 unknown / denied | `"$CUA" grant`，系统设置里手动打开 CuaDriver |
-| `list_apps` 为空或失败 | `"$CUA" serve`，再 `"$CUA" doctor` |
+| `list_apps` 为空或失败 | `"$CUA" serve`，再 `"$CUA" doctor --json` |
+| `list-tools` / `guide` 未知命令 | `"$CUA" update`，二进制太旧 |
 | Agent 连不上 MCP | 用 `connect` 打印的绝对路径；重启客户端 |
 | Linux 点不到窗口 | 改用 X11 / XWayland；检查 AT-SPI |
 | Windows 窗口列表是空的 | 不要当服务跑 |

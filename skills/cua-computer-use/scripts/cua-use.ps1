@@ -23,6 +23,8 @@ Host desktop (Cua Driver) — default:
   ensure                         Install if missing, start daemon, probe list_apps
   install                        Official installer
   bin                            Print cua-driver path
+  guide                          Version-matched tool list (run once per session)
+  docs [tools|mcp|cli|all]       Live docs from the binary
   doctor / status
   serve                          Start daemon
   call <tool> [json]             Invoke a driver tool
@@ -95,12 +97,33 @@ function Cmd-Ensure {
         Info "starting cua-driver daemon"
         Start-Daemon $bin
         if (-not (Wait-Daemon $bin)) {
-            & $bin doctor
+            & $bin doctor --json
             Die "daemon not ready. Must run in an interactive user session (not Session 0)."
         }
     }
     & $bin --version
     & $bin call list_apps
+}
+
+function Cmd-Guide {
+    $bin = Resolve-Driver
+    if (-not $bin) { Die "cua-driver not found. Run: cua-use.ps1 ensure" }
+    & $bin --version
+    & $bin list-tools
+    if ($LASTEXITCODE -ne 0) {
+        Die "list-tools failed. If unknown command, run: cua-use.ps1 update. Do not invent tools."
+    }
+    Info "next: cua-use.ps1 describe <tool>   then   cua-use.ps1 call <tool> '<json>'"
+}
+
+function Cmd-Docs([string]$Kind) {
+    switch ($Kind) {
+        { $_ -in @("tools", "") } { Invoke-Driver list-tools }
+        "mcp" { Invoke-Driver dump-docs --type mcp -p }
+        "cli" { Invoke-Driver dump-docs --type cli -p }
+        "all" { Invoke-Driver dump-docs --type all -p }
+        default { Die "usage: cua-use.ps1 docs [tools|mcp|cli|all]" }
+    }
 }
 
 function Cmd-Connect([string]$Client) {
@@ -125,6 +148,11 @@ switch ($cmd) {
         $b = Resolve-Driver
         if (-not $b) { Die "cua-driver not found" }
         Write-Output $b
+    }
+    "guide" { Cmd-Guide }
+    "docs" {
+        $kind = if ($rest.Count -ge 1) { $rest[0] } else { "tools" }
+        Cmd-Docs $kind
     }
     "doctor" { Invoke-Driver doctor @rest }
     "status" { Invoke-Driver status @rest }
@@ -170,12 +198,7 @@ asyncio.run(main())
     }
     "--" { Invoke-Driver @rest }
     default {
-        $bin = Resolve-Driver
-        if ($bin) {
-            Invoke-Driver call $cmd @rest
-        } else {
-            Usage
-            Die "unknown command '$cmd'"
-        }
+        Usage
+        Die "unknown command '$cmd'. Agents: guide then call <tool>. Humans: -- <cua-driver args>"
     }
 }
