@@ -2,15 +2,25 @@
 
 Personal skill repository for agent automation.
 
+Installable skills are directories under `skills/` that contain a `SKILL.md`.
+**Active** means that contract is present and intended for `npx skills add`.
+**Draft** means the folder exists but is not an installable skill.
+
 ## Skills
 
 | Category | Skill | Description | Status |
 |:--------:|:------|:------------|:------:|
-| 🤖 Automation | [real-browser](./skills/real-browser) | Browser automation using real Chrome with CDP | ✅ Active |
+| 🤖 Automation | [real-browser](./skills/real-browser) | Attach agent-browser only to an already-running Chrome with a fixed CDP port | ✅ Active |
 | 🖥 Computer Use | [cua-computer-use](./skills/cua-computer-use) | CuaDriver.app + CLI：后台操控本机桌面，或隔离沙箱 | ✅ Active |
-| 🔧 Extension | [crxhub-cli](./skills/crxhub-cli) | Manage browser extensions from GitHub Releases | ✅ Active |
-| 📦 Package | [npmjs-cli](./skills/npmjs-cli) | Manage npm registry operations and package lifecycle | ✅ Active |
-| 🐙 GitHub | [gh-cli](./skills/gh-cli) | GitHub CLI and Git daily dev workflow | ✅ Active |
+| 🔧 Extension | [crxhub-cli](./skills/crxhub-cli) | Install/update/remove browser extensions from GitHub Releases | ✅ Active |
+| 📦 Package | [npmjs-cli](./skills/npmjs-cli) | Publish, version, deprecate, and control access on the npm registry | ✅ Active |
+| 🐙 GitHub | [gh-cli](./skills/gh-cli) | GitHub CLI + git: PRs, conflicts, Actions, releases | ✅ Active |
+| 🌐 Proxy | [charles-cli](./skills/charles-cli) | Charles Proxy as CLI for HTTP/HTTPS capture, export, throttle | ✅ Active |
+| 🖼 Branding | [svg2icon](./skills/svg2icon) | SVG logo → Tauri icon set + favicon/branding sync | ✅ Active |
+| 🔄 Desktop | [tauri-updater](./skills/tauri-updater) | Tauri v2 auto-update (plugin + sidebar UI + GH Actions `latest.json`) | ✅ Active |
+| ⚡ Automation | [n8n-cli](./skills/n8n-cli) | Unfinished stub (no `SKILL.md`, no CLI). Not installable. | 📝 Draft |
+
+`xxww-docs` lives at the repo root (documentation skill), not under `skills/`.
 
 ### cua-computer-use
 
