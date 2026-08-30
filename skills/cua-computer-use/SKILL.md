@@ -12,10 +12,12 @@ argument-hint: <command> [args...]
 
 # Cua Computer Use 2.0 — skill + CLI
 
+> 给人看的说明（CuaDriver 是不是 App、怎么装、怎么跑）：[README.md](./README.md)
+
 Computer Use 2.0 不是独立软件包，而是 [Cua](https://cua.ai) 的能力。
 **不是** Anthropic 官方 Claude Computer Use API。
 
-本 skill 默认走 **CLI 模式**：包装官方 `cua-driver`（本机后台操控）。可选再走 MCP 或隔离 Sandbox。
+macOS 上 **CuaDriver.app 是真正的 App**（权限 + daemon）。`cua-driver` 是 CLI。本 skill 默认走 **CLI 模式**：包装官方 CLI，后台操控本机应用。可选再走 MCP 或隔离 Sandbox。
 
 > **Always combine setup + command in ONE shell call.** 先 `ensure`，再 `call`。
 
@@ -38,7 +40,7 @@ $CUA = "<SKILL_DIR>\scripts\cua-use.ps1"
 
 `ensure` 会：没有 `cua-driver` 就跑官方安装脚本 → 拉起 daemon → `call list_apps`。列出正在跑的应用即成功。
 
-macOS 第一次还要授权（交互，不能跳过）：
+macOS 第一次还要授权（交互，不能跳过）。授权对象是 **CuaDriver.app**，不是裸二进制：
 
 ```bash
 "$CUA" grant
@@ -118,7 +120,7 @@ macOS 14+（Sonoma）。找不到命令就新开终端，或 `source ~/.zshrc`�
 
 ## Drive loop
 
-工具名 `snake_case`。CLI 是真入口：`cua-driver call <tool> [json]`（本包装器同名）。`call` 需要 **daemon 已在跑** → 所以先 `ensure`。
+工具名 `snake_case`。CLI 是真入口：`cua-driver call <tool> [json]`（本包装器同名）。`call` 需要 **daemon 已在跑** → 所以先 `ensure`。macOS 上 daemon 必须从 **CuaDriver.app** 起来。
 
 ```text
 inspect → act → verify
@@ -188,7 +190,7 @@ Cursor：把 JSON 写入 `~/.cursor/mcp.json`。改完重启客户端。
 
 ## macOS 权限
 
-必须用 **CuaDriver.app** 拉起 daemon，TCC 才记在正确身份上：
+CuaDriver.app 是授权对象。必须用这个 App 拉起 daemon，TCC 才记在正确身份上：
 
 ```bash
 "$CUA" grant
