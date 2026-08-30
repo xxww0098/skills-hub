@@ -1,4 +1,6 @@
-# Linux drive evidence (2026-08-30, cua-driver 0.22.2, XFCE DISPLAY=:1)
+# Drive evidence (cua-driver 0.22.2)
+
+## Linux (2026-08-30, cloud XFCE, DISPLAY=:1)
 
 Screenshots after a click/type that changed visible UI.
 
@@ -15,3 +17,15 @@ Screenshots after a click/type that changed visible UI.
 | `webkitgtk-calc-42.png` | WebKitGTK 4.1 | Background AX → Result 42 |
 
 Re-run: `../linux-smoke.sh`.
+
+## macOS (2026-08-30, xxwwdeMacBook-Pro, 26.6.2 arm64)
+
+Cua Lab Tauri 2 from this branch (`wry 0.55.1`), CuaDriver.app daemon,
+title `Cua Lab`, `app_name` `cua-lab`, pid 42741, window_id 31594,
+secondary space. Background AX under **AXWebArea** (no PX / foreground).
+
+| File | What changed |
+|------|----------------|
+| `macos-tauri-before.png` | Before clicks (`surface=tauri`, Result 0, Counter 0) |
+| `macos-tauri-after-inc.png` | After Increment (`increment=1`, Counter 1) |
+| `macos-tauri-ax-calc-42.png` | After Increment + 6 × 7 (`Result: 42`, `result=42`) |

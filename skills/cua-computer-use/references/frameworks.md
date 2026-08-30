@@ -33,8 +33,13 @@ with `app_name` (`cua-lab-electron` vs `Cua-lab`).
 
 Then `get_window_state` (screenshot is on by default; `capture_mode` is
 ignored). Click with `element_token` from that snapshot (or `element_index`
-**plus** `snapshot_id`). If the tree is one `frame` / `AXWebArea` /
-`HTMLContent` / `FlutterView` / empty, **stop using AX for inner controls**.
+**plus** `snapshot_id`). If a **complete** walk is one `frame` /
+`HTMLContent` / `FlutterView` / empty, **stop using AX for inner
+controls**. A first snapshot that is chrome + Apple menus only
+(`elements_complete:false`, no WebArea/Probe) is an **incomplete walk**,
+not WKWebView collapse — re-walk with `max_elements` ≥ 5000 (or query
+`Web` / `Probe`) before PX. macOS Cua Lab Tauri 2 inner controls live
+under **`AXWebArea`**, not `HTMLContent`.
 
 Linux AT-SPI requires a real session bus. If `degraded_reason` contains
 `unsupported transport 'autolaunch'`, run `cua-use ensure` (restarts serve
@@ -45,7 +50,7 @@ with `unix:path=…`) before classifying "no AX".
 | `*.app` Cocoa / Calculator / System Settings | Native | AX |
 | `Electron`, `Code`, Slack, Discord, Figma (desktop), `cua-lab-electron` | Electron | See Electron § |
 | `tauri` / `Cua-lab` / `productName` / WebKitGTK | Tauri-linux | AX (`aria-label`) → foreground PX. Never `browser_prepare` unless bind succeeds |
-| `Cua Lab` + one `HTMLContent` (macOS WKWebView) | Tauri-macOS | AX → PX. **Not proven on Linux** |
+| `Cua Lab` / `cua-lab` + **`AXWebArea`** (macOS Tauri 2) | Tauri-macOS | Background AX under AXWebArea. Re-walk if the first snapshot has no WebArea. Never `browser_prepare` unless bind succeeds |
 | `flutter` / `runner` / Dart VM | Flutter embedder | Semantics AX → PX. **No Flutter SDK here** |
 | `Unity`, `Blender`, `*.exe` game, WebGL canvas | Canvas | Foreground + PX |
 | `Qt*` / `PyQt` / `Cua Lab Qt` | Qt Widgets = AX; Qt Quick = PX | |
@@ -74,9 +79,11 @@ Unique accessible names beat coordinates. Fixture (Cua Lab):
 `Probe Increment`, `Probe Key 6`, `Probe Name Field`, `Probe Gain`,
 `Probe Row Alpha`, `Probe Canvas`, `Probe Surface Flutter`, `Probe Log`.
 
-`Probe Counter` / `Probe Result` / `Probe Log` are often nameless labels —
-the visible `1` / `42` / `result=42` is on the screenshot, not in
-`elements[].value`.
+`Probe Counter` / `Probe Result` / `Probe Log` are often nameless labels
+on Linux AT-SPI — the visible `1` / `42` / `result=42` is on the
+screenshot. macOS Tauri 2 AXStaticText **did** carry those strings
+(2026-08-30); still verify on the screenshot because `click.effect` is
+unverifiable.
 
 ## Per runtime
 
@@ -123,13 +130,33 @@ Linux binary and on WebKitGTK (`browser_requires_setup`).
 3. `Probe Surface Flutter` / Canvas replaces the keypad with one
    `Probe Canvas` node (no inner keys). Screenshot + **foreground** PX
    (background PX reported `global_input` success but did not change the UI).
-4. Do not claim WKWebView "one HTMLContent node" from this VM — that is
-   **macOS-only and unproven here**.
+4. Keep Linux WebKitGTK/AT-SPI wording as-is (`aria-label` + `press`).
+   Do not import a macOS `HTMLContent` story onto this surface.
 
-**macOS (keep; unproven here):** unique names may appear on WebView2;
-WKWebView often collapses to one HTMLContent node → PX. `type_text` may
-need one `bring_to_front`. `webkit_inspector_port` / `TAURI_WEBVIEW_AUTOMATION`
-only if **you** launched with those env vars.
+**macOS (proven 2026-08-30, xxwwdeMacBook-Pro, macOS 26.6.2 arm64,
+cua-driver 0.22.2 from CuaDriver.app, wry 0.55.1, title `Cua Lab`,
+`app_name` `cua-lab`):**
+
+1. Inner `aria-label` Probe nodes sit under **`AXWebArea`** (role name
+   AXWebArea, **not** HTMLContent). Background `element_token`
+   (`route: accessibility`) completed Increment and 6 × 7 = 42. No PX,
+   no `delivery_mode:"foreground"`, no `bring_to_front`.
+2. First unfiltered `get_window_state` can look collapsed (window chrome
+   + Apple menus, `elements_complete:false`, no WebArea/Probe). That is
+   an incomplete walk. Re-walk with `max_elements` ≥ 5000 or query
+   `Web` / `Probe` **before** falling back to PX. Missing WebArea ≠
+   WKWebView collapse.
+3. `browser_prepare` refused:
+   `{"refusal":{"code":"browser_requires_setup","message":"no owned endpoint is available; pass allow_launch=true with an isolated profile and verified approval"},"status":"refused"}`.
+4. `query:"Probe"` still drops `Multiply` / `Equals`.
+5. AXStaticText carried `42` / `result=42` on this drive; still verify
+   on the screenshot / Probe Log (`click.effect` is unverifiable).
+
+Do **not** document macOS Tauri 2 / Cua Lab as default “one HTMLContent
+node”. That collapse remains a possible WKWebView behavior on **other
+apps** / older hosts — unproven for this fixture. WebView2 unique names
+and `webkit_inspector_port` / `TAURI_WEBVIEW_AUTOMATION` are still
+launch-env only.
 
 Rust rebuild changes PID. Vite HMR does not.
 
@@ -175,4 +202,5 @@ CUA call get_window_state '{"pid":PID,"window_id":WID,"screenshot_out_file":"/tm
 ```
 
 Repeatable Linux hosts: `tests/linux-smoke.sh` (GTK required; Electron /
-Tauri / Qt / WebKitGTK when present).
+Tauri / Qt / WebKitGTK when present). macOS Tauri 2 evidence:
+`tests/evidence/macos-tauri-*.png` (AXWebArea, background AX).

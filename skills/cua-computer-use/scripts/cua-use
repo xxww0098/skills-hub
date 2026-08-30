@@ -16,7 +16,7 @@ usage() {
 Usage: cua-use <command> [args...]
 
 Host desktop (Cua Driver) — default:
-  ensure                         Install if missing, start daemon, probe list_apps
+  ensure                         Install if missing, start daemon, probe list_windows
   install                        Run official cua-driver installer
   bin                            Print resolved cua-driver path
   guide                          Version-matched tool list (run once per session)
@@ -175,7 +175,13 @@ driver() {
 
 daemon_alive() {
   local bin="$1"
-  "$bin" call list_apps >/dev/null 2>&1
+  # Proven 2026-08-30 macOS 26.6.2: `call list_apps` hung ~90s even though
+  # CuaDriver.app serve was already up. `status` is daemon liveness.
+  # `list_windows` is the desktop probe we actually drive with.
+  if "$bin" status >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
 }
 
 start_daemon() {
@@ -232,7 +238,8 @@ cmd_ensure() {
   fi
 
   "$bin" --version || true
-  "$bin" call list_apps
+  # Do not probe with list_apps — it can hang a minute-plus on macOS.
+  "$bin" call list_windows '{"on_screen_only": true}'
 }
 
 cmd_grant() {

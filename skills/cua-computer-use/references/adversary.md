@@ -3,12 +3,15 @@
 Caught against a real `cua-driver 0.22.2` binary, not docs memory.
 Re-run `cua-use describe <tool>` on the user's version before arguing.
 
-Linux rows below were re-hit on 2026-08-30 (cloud XFCE, DISPLAY=:1).
+Linux rows: 2026-08-30 cloud XFCE (`DISPLAY=:1`).
+macOS rows: 2026-08-30 xxwwdeMacBook-Pro (26.6.2 arm64, CuaDriver.app).
 
 | Trap | What happens | What to do |
 |------|----------------|------------|
 | `cua-driver grant` | Treated as **tool** `grant`; "no reviewed risk classification"; may exit 0 | `cua-use grant` → `permissions grant`. Never raw `<tool>` |
 | `cua-use status` for TCC | `status` is **daemon liveness** | `permissions status --json` |
+| macOS `ensure` / `call list_apps` | Hung ~90s on 2026-08-30 even with CuaDriver.app `serve` already up | Liveness = `status` or `list_windows`. Never block `ensure` on `list_apps` |
+| First `get_window_state` chrome-only (macOS Tauri) | Menus + chrome, `elements_complete:false`, no `AXWebArea` / Probe | Incomplete walk, not HTMLContent collapse. Re-walk `max_elements` ≥ 5000 or query `Web`/`Probe` before PX |
 | Linux `permissions status` `atspi: false` | Daemon inherited `DBUS_SESSION_BUS_ADDRESS=autolaunch:`. zbus: `unsupported transport 'autolaunch'`. `doctor` can still say AT-SPI reachable | `cua-use session-bus` then `cua-use ensure` (restarts serve). Need `unix:path=…` |
 | `get_window_state` `degraded_reason` autolaunch | `elements` empty, screenshot still written | Fix the bus. Do not classify the app as "no AX" yet |
 | `click` with only `element_index` | Stale / rejected without `snapshot_id` | Prefer `element_token` from the same `get_window_state` |
@@ -16,7 +19,7 @@ Linux rows below were re-hit on 2026-08-30 (cloud XFCE, DISPLAY=:1).
 | `get_window_state` without `window_id` | Schema requires `pid` **and** `window_id` | Take both from `list_windows` |
 | `capture_mode` | Deprecated, ignored. Tree + screenshot always (unless `include_screenshot:false`) | Use `screenshot_out_file` for evidence |
 | `query:"Probe"` | Drops `Multiply` / `Equals` / `Clear` | Unfiltered snapshot, or query those names |
-| AX label ≠ visible text | `Probe Counter` / `Probe Result` / `Probe Log` stay nameless | Read the screenshot (or log pixels) |
+| AX label ≠ visible text | Linux: Probe Counter/Result/Log often nameless. macOS Tauri 2: AXStaticText **did** carry `42` / `result=42` | Still verify on the screenshot (`click.effect` is unverifiable) |
 | `click.effect` / `type_text` `unverifiable` | UI may have changed anyway | Re-screenshot. GTK type can say `delivery_failed` and still insert text |
 | Linux `list_apps` | Every `/proc` pid (bash, tail, driver) | Drive from `list_windows` |
 | Linux `list_apps[].active` | Always `false` | Ignore |

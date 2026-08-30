@@ -66,7 +66,7 @@ Do not guess schemas. After `list_windows`, classify (see frameworks.md).
 | Cocoa / WPF / WinUI / GTK widgets / Qt Widgets | AX `element_token` |
 | Electron (VS Code, Slack) | Linux: CDP only if the process already has a DevTools port; else one AX `frame` → **foreground** PX. macOS: CDP → truncated AX → PX |
 | Tauri / WebKitGTK (Linux) | AX (`aria-label` press) works in background. Paint/canvas PX needs **foreground**. Typed CDP refused |
-| Tauri / WKWebView (macOS) | AX then PX. WKWebView often one HTMLContent node. **Unproven on Linux** |
+| Tauri 2 / WKWebView (macOS) | Background AX `element_token` under **`AXWebArea`** (Cua Lab, 2026-08-30). First snapshot may be chrome-only (`elements_complete:false`) — re-walk `max_elements` ≥ 5000 or query Web/Probe **before** PX. Missing WebArea ≠ HTMLContent collapse |
 | Flutter embedder | Semantics AX then PX. **No Flutter SDK in the Linux cloud run** — HTML `Probe Surface Flutter` is a paint stand-in only |
 | Canvas, Unity, Blender, WebGL | Foreground + PX |
 
@@ -82,9 +82,11 @@ inspect → classify → act → verify
 6. verify from the new screenshot (or Probe Log). click.effect is often unverifiable
 ```
 
-Hard rules (0.22.x live binary, Linux-proven where noted):
+Hard rules (0.22.x live binary; Linux cloud + macOS Tauri 2 Cua Lab where noted):
 
 1. `ensure` + `guide` once per session. `call` needs the daemon (`serve`).
+   `ensure` liveness is `status` / `list_windows` — do **not** block on
+   `list_apps` (macOS hung ~90s with CuaDriver.app already serving).
 2. `get_window_state` **requires** `pid` and `window_id`. Prefer
    `screenshot_out_file` over inlining base64.
 3. Prefer `element_token`. `element_index` **must** include the matching
@@ -99,10 +101,10 @@ Hard rules (0.22.x live binary, Linux-proven where noted):
 7. Do not `browser_prepare` Tauri / WebView2 / WebKitGTK / Flutter unless
    bind succeeds. Default Electron on Linux **refuses** CDP
    (`browser_requires_setup`) unless launched with `--remote-debugging-port`.
-8. Stay background for GTK / Qt / Tauri-linux AX. Escalate to
-   `delivery_mode:"foreground"` when the binary returns
-   `background_unavailable` (Electron/Chromium PX) or when a canvas PX
-   reports success but the screenshot does not change.
+8. Stay background for GTK / Qt / Tauri-linux AX **and macOS Tauri 2
+   AXWebArea**. Escalate to `delivery_mode:"foreground"` when the binary
+   returns `background_unavailable` (Linux Electron/Chromium PX) or when
+   a canvas PX reports success but the screenshot does not change.
 9. Login / password / payment / corp-intranet: ask first.
 10. Do not click the user's frontmost editor. Do not `kill_app` unless asked.
 11. Agents: `CUA call <tool> '<json>'`. Never `cua-driver <tool>`.
@@ -112,8 +114,10 @@ Names: `Probe Increment`, `Probe Key 6`, `Probe Name Field`, `Probe Gain`,
 `Probe Row Alpha`, `Probe Canvas`, `Probe Surface Flutter`, `Probe Log`.
 AX smoke: 6 × 7 → screenshot / `Probe Log` shows `result=42`. Do **not**
 `query:"Probe"` for that path — it drops `Multiply` / `Equals`.
-`Probe Counter` / `Probe Result` AX labels do not include the visible
-number. Repeatable Linux run: `tests/linux-smoke.sh`.
+Linux AT-SPI labels often omit the visible number. macOS Tauri 2
+AXStaticText **did** carry `42` / `result=42` — still verify on the
+screenshot because `click.effect` is unverifiable. Repeatable Linux run:
+`tests/linux-smoke.sh`. macOS evidence: `tests/evidence/macos-tauri-*.png`.
 
 ## Bounded fallback
 
