@@ -50,7 +50,7 @@ Passthrough:
 Examples:
   cua-use ensure && cua-use guide
   cua-use describe click
-  cua-use call list_apps
+  cua-use call list_windows '{"on_screen_only": true}'
   cua-use call launch_app '{"name":"Calculator"}'
   cua-use connect claude
 EOF

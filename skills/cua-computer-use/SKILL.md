@@ -128,4 +128,4 @@ CUA call list_windows '{"on_screen_only": true}'
 Then `CUA update`. Install / MCP / sandbox: [README.md](./README.md).
 Live-binary traps: [references/adversary.md](./references/adversary.md).
 Linux smoke: [tests/linux-smoke.sh](./tests/linux-smoke.sh).
-macOS evidence: `tests/evidence/macos-tauri-*.png`.
+macOS AXWebArea was proven 2026-08-30; screenshots are not in this tree.

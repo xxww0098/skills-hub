@@ -22,10 +22,7 @@ Re-run: `../linux-smoke.sh`.
 
 Cua Lab Tauri 2 from this branch (`wry 0.55.1`), CuaDriver.app daemon,
 title `Cua Lab`, `app_name` `cua-lab`, pid 42741, window_id 31594,
-secondary space. Background AX under **AXWebArea** (no PX / foreground).
-
-| File | What changed |
-|------|----------------|
-| `macos-tauri-before.png` | Before clicks (`surface=tauri`, Result 0, Counter 0) |
-| `macos-tauri-after-inc.png` | After Increment (`increment=1`, Counter 1) |
-| `macos-tauri-ax-calc-42.png` | After Increment + 6 × 7 (`Result: 42`, `result=42`) |
+secondary space. Background AX under **AXWebArea** (no PX / foreground)
+was proven 2026-08-30. Screenshots (`macos-tauri-before.png`,
+`macos-tauri-after-inc.png`, `macos-tauri-ax-calc-42.png`) are **not
+in this tree**.

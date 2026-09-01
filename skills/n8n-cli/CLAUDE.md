@@ -2,6 +2,6 @@
 
 Not installable. No `SKILL.md` and no CLI contract.
 
-This folder is an unfinished stub: leftover test-report images only.
+This folder is an unfinished stub.
 A previous file here contained a credential and was removed.
 Do not invent an n8n workflow from this directory.

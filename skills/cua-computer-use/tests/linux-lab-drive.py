@@ -19,7 +19,18 @@ def run_cua(*args: str) -> tuple[int, str]:
     env = os.environ.copy()
     env.setdefault("DISPLAY", ":1")
     env["PATH"] = os.path.expanduser("~/.local/bin") + ":" + env.get("PATH", "")
-    p = subprocess.run([str(CUA), *args], capture_output=True, text=True, env=env)
+    timeout = None if args[:1] == ("ensure",) else 30
+    try:
+        p = subprocess.run(
+            [str(CUA), *args],
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as e:
+        out = ((e.stdout or "") + "\n" + (e.stderr or "")).strip()
+        return 124, out or f"timeout after {timeout}s: {' '.join(args)}"
     out = (p.stdout or "").strip()
     if p.returncode != 0 and p.stderr:
         out = (out + "\n" + p.stderr.strip()).strip()
@@ -231,16 +242,18 @@ def main() -> int:
             rc, data, raw = click_el(pid, el, foreground=fg)
             calc.append({"name": name, "rc": rc, "data": data})
             time.sleep(0.15)
-        snapshot(pid, wid, out / "after-calc.png")
+        after_calc = snapshot(pid, wid, out / "after-calc.png")
         record["calc"] = calc
-        record["ocr_calc"] = ocr(out / "after-calc.png")[:500]
-        record["ok_calc"] = "42" in (record["ocr_calc"] or "") or any(
-            (s.get("rc") == 0) for s in calc
-        )
+        ocr_text = ocr(out / "after-calc.png")
+        record["ocr_calc"] = ocr_text[:500]
+        record["ok_calc"] = "42" in ocr_text or "result=42" in json.dumps(after_calc)
 
     (out / "record.json").write_text(json.dumps(record, indent=2)[:120_000])
     print(json.dumps(record, indent=2)[:6000])
-    return 0 if record.get("ok_increment") else 1
+    ok = bool(record.get("ok_increment"))
+    if "calc" in record:
+        ok = ok and bool(record.get("ok_calc"))
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":

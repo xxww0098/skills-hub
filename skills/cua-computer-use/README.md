@@ -125,7 +125,7 @@ $CUA = "$(Get-Location)\scripts\cua-use.ps1"
 & $CUA guide
 ```
 
-`ensure` = 没有 `cua-driver` 就跑官方安装 → 拉起 daemon → `call list_apps`。能列出正在运行的应用 = 驱动已经能看到桌面。
+`ensure` = 没有 `cua-driver` 就跑官方安装 → 拉起 daemon → `status` 探活，再用 `call list_windows '{"on_screen_only": true}'`。不要用 `list_apps`（macOS 曾挂约 90 秒）。
 
 Linux：`cua-driver` 的 zbus **不能**连 `DBUS_SESSION_BUS_ADDRESS=autolaunch:`。包装脚本会改写成 `unix:path=…` 再 `serve`。自检：`"$CUA" session-bus` 和 `"$CUA" permissions status --json`（`atspi` 应为 true）。`doctor` 说 AT-SPI reachable 但 `get_window_state` 只有截图、没有控件 = 总线还是 autolaunch。
 
@@ -188,7 +188,7 @@ irm https://cua.ai/driver/install.ps1 | iex
 `scripts/cua-use`（Windows 用 `cua-use.ps1`）包一层官方 `cua-driver`。先 `ensure`，再 `guide`，再 `call`。
 
 ```bash
-"$CUA" ensure                         # 安装 + daemon + list_apps
+"$CUA" ensure                         # 安装 + daemon；liveness = status，probe = list_windows
 "$CUA" install                        # 只跑官方安装
 "$CUA" bin                            # cua-driver 路径
 "$CUA" guide                          # --version + list-tools（每个会话跑一次）
@@ -266,7 +266,7 @@ cua sb create --os linux
 |------|------|
 | `cua-driver: command not found` | `"$CUA" install`；新开终端；`source ~/.zshrc` |
 | macOS TCC unknown / denied | `"$CUA" grant`，再 `"$CUA" permissions status --json` |
-| `list_apps` 为空或失败 | `"$CUA" serve`，再 `"$CUA" doctor --json` |
+| `list_windows` / `status` 失败 | `"$CUA" serve`，再 `"$CUA" doctor --json`。不要用 `list_apps` 探活 |
 | `list-tools` / `guide` 未知命令 | `"$CUA" update`，二进制太旧 |
 | Agent 连不上 MCP | 用 `connect` 打印的绝对路径；重启客户端 |
 | Linux 点不到窗口 | 改用 X11 / XWayland；`"$CUA" session-bus`；Electron 用 `delivery_mode:foreground` |

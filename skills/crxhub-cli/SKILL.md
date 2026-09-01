@@ -19,6 +19,12 @@ CRX="<SKILL_DIR>/scripts/crx-$(uname -s | tr A-Z a-z)-$(uname -m)"
 chmod +x "$CRX"
 ```
 
+Published globs (no `linux-aarch64`; do not invent one):
+`crx-darwin-arm64`, `crx-darwin-x86_64`, `crx-linux-x86_64`,
+`crx-windows-x86_64.exe`. Git Bash `uname` is `MINGW*` / `MSYS*` / `CYGWIN*`,
+not `windows`, so that glob will not yield `windows-x86_64`. On Windows use
+`scripts/crx-windows-x86_64.exe`.
+
 | Intent | Command |
 |--------|---------|
 | update all / 更新 crx | `$CRX update` |
@@ -36,7 +42,7 @@ $CRX update <owner/repo>
 $CRX list
 $CRX outdate
 $CRX info <owner/repo>
-$CRX cleanup                              # keep last 3 versions
+$CRX cleanup                              # keep last 1 version (clap --keep default)
 $CRX uninstall <owner/repo>
 ```
 

@@ -31,8 +31,8 @@ CuaDriver **在 macOS 上是 App**（`/Applications/CuaDriver.app`），用来�
 ```bash
 CUA=skills/cua-computer-use/scripts/cua-use
 chmod +x "$CUA"
-"$CUA" ensure          # 安装 + 拉起 daemon + 列出本机应用
-"$CUA" call list_apps
+"$CUA" ensure          # 安装 + 拉起 daemon；存活探测是 status，不要 list_apps
+"$CUA" call list_windows '{"on_screen_only": true}'
 ```
 
 macOS 第一次：`"$CUA" grant`（`permissions grant`，不要跑 `cua-driver grant`），再到系统设置里把 CuaDriver 的辅助功能和屏幕录制打开。查权限：`"$CUA" permissions status --json`。
