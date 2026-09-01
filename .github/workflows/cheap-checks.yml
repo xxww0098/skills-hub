@@ -1,0 +1,28 @@
+# Syntax + docs-tool unit tests only.
+# Does NOT run skills/cua-computer-use/tests/linux-smoke.sh —
+# that needs DISPLAY + cua-driver, which ubuntu-latest does not have.
+name: cheap-checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  wrappers-and-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: bash -n skill wrappers
+        run: |
+          set -euo pipefail
+          bash -n skills/cua-computer-use/scripts/cua-use
+          bash -n skills/cua-computer-use/scripts/linux-lab
+          bash -n skills/cua-computer-use/tests/linux-smoke.sh
+          bash -n skills/charles-cli/scripts/charles-fast.sh
+          bash -n skills/real-browser/scripts/real_browser.sh
+          bash -n skills/svg2icon/scripts/generate_tauri_icons.sh
+      - name: linux-lab-drive selftest
+        run: python3 skills/cua-computer-use/tests/linux-lab-drive.py --selftest
+      - name: xxww-docs unit tests
+        run: python3 xxww-docs/scripts/test_docs_tools.py

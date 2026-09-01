@@ -32,8 +32,8 @@ gh auth login
 
 ```bash
 # 克隆仓库
-git clone https://github.com/yourusername/crxhub.git
-cd crxhub
+git clone https://github.com/xxww0098/skills-hub.git
+cd skills-hub/.develop/crxhub-cli
 
 # 构建 Release 版本
 cargo build --release
@@ -146,8 +146,8 @@ crx --yes ...
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # 克隆并构建
-git clone https://github.com/yourusername/crxhub.git
-cd crxhub
+git clone https://github.com/xxww0098/skills-hub.git
+cd skills-hub/.develop/crxhub-cli
 cargo build --release
 
 # 二进制文件路径: target/release/crx

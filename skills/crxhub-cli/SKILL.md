@@ -19,6 +19,11 @@ CRX="<SKILL_DIR>/scripts/crx-$(uname -s | tr A-Z a-z)-$(uname -m)"
 chmod +x "$CRX"
 ```
 
+Shipped: `crx-darwin-arm64`, `crx-darwin-x86_64`, `crx-linux-x86_64`,
+`crx-windows-x86_64.exe`. The glob is `crx-linux-aarch64` on Linux ARM —
+**that binary is not in this repo**. Do not invent it; build from
+`.develop/crxhub-cli` or use another host.
+
 | Intent | Command |
 |--------|---------|
 | update all / 更新 crx | `$CRX update` |
@@ -36,7 +41,7 @@ $CRX update <owner/repo>
 $CRX list
 $CRX outdate
 $CRX info <owner/repo>
-$CRX cleanup                              # keep last 3 versions
+$CRX cleanup                              # keep=1 (active version only)
 $CRX uninstall <owner/repo>
 ```
 

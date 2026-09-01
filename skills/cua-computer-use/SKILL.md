@@ -127,5 +127,6 @@ CUA call list_windows '{"on_screen_only": true}'
 
 Then `CUA update`. Install / MCP / sandbox: [README.md](./README.md).
 Live-binary traps: [references/adversary.md](./references/adversary.md).
-Linux smoke: [tests/linux-smoke.sh](./tests/linux-smoke.sh).
-macOS evidence: `tests/evidence/macos-tauri-*.png`.
+Linux smoke: [tests/linux-smoke.sh](./tests/linux-smoke.sh)
+(needs `DISPLAY` + `cua-driver`; not GitHub-hosted `ubuntu-latest`).
+macOS Tauri 2 AXWebArea notes: [references/frameworks.md](./references/frameworks.md).
