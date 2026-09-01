@@ -20,7 +20,7 @@ function Usage {
 Usage: cua-use.ps1 <command> [args...]
 
 Host desktop (Cua Driver) — default:
-  ensure                         Install if missing, start daemon, probe list_apps
+  ensure                         Install if missing, start daemon, probe list_windows
   install                        Official installer
   bin                            Print cua-driver path
   guide                          Version-matched tool list (run once per session)
@@ -79,7 +79,9 @@ function Invoke-Driver {
 }
 
 function Test-Daemon([string]$Bin) {
-    & $Bin call list_apps 2>$null | Out-Null
+    # Liveness is `status`. Do not probe with list_apps — it can hang a
+    # minute-plus on macOS even when CuaDriver.app serve is already up.
+    & $Bin status 2>$null | Out-Null
     return $LASTEXITCODE -eq 0
 }
 
@@ -107,7 +109,10 @@ function Cmd-Ensure {
         }
     }
     & $bin --version
-    & $bin call list_apps
+    & $bin call list_windows '{"on_screen_only": true}'
+    if ($LASTEXITCODE -ne 0) {
+        Die "list_windows probe failed (daemon up but desktop not visible). See: cua-use.ps1 doctor --json"
+    }
 }
 
 function Cmd-Guide {

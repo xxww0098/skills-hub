@@ -20,12 +20,7 @@ Re-run: `../linux-smoke.sh`.
 
 ## macOS (2026-08-30, xxwwdeMacBook-Pro, 26.6.2 arm64)
 
-Cua Lab Tauri 2 from this branch (`wry 0.55.1`), CuaDriver.app daemon,
-title `Cua Lab`, `app_name` `cua-lab`, pid 42741, window_id 31594,
-secondary space. Background AX under **AXWebArea** (no PX / foreground).
-
-| File | What changed |
-|------|----------------|
-| `macos-tauri-before.png` | Before clicks (`surface=tauri`, Result 0, Counter 0) |
-| `macos-tauri-after-inc.png` | After Increment (`increment=1`, Counter 1) |
-| `macos-tauri-ax-calc-42.png` | After Increment + 6 × 7 (`Result: 42`, `result=42`) |
+Cua Lab Tauri 2 (`wry 0.55.1`), CuaDriver.app daemon, title `Cua Lab`,
+`app_name` `cua-lab`. Background AX under **AXWebArea** (no PX / foreground).
+Increment and 6 × 7 → `Result: 42` / `result=42` were proven on that host.
+PNG bytes for that drive are not in this tree (do not invent empty filenames).
