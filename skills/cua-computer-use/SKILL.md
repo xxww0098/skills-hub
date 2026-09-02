@@ -129,4 +129,5 @@ Then `CUA update`. Install / MCP / sandbox: [README.md](./README.md).
 Live-binary traps: [references/adversary.md](./references/adversary.md).
 Linux smoke: [tests/linux-smoke.sh](./tests/linux-smoke.sh)
 (needs `DISPLAY` + `cua-driver`; not GitHub-hosted `ubuntu-latest`).
-macOS Tauri 2 AXWebArea notes: [references/frameworks.md](./references/frameworks.md).
+macOS Tauri 2 AXWebArea was proven 2026-08-30; screenshots are not in this tree.
+See [references/frameworks.md](./references/frameworks.md).

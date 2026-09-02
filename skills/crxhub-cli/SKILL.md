@@ -22,7 +22,9 @@ chmod +x "$CRX"
 Shipped: `crx-darwin-arm64`, `crx-darwin-x86_64`, `crx-linux-x86_64`,
 `crx-windows-x86_64.exe`. The glob is `crx-linux-aarch64` on Linux ARM —
 **that binary is not in this repo**. Do not invent it; build from
-`.develop/crxhub-cli` or use another host.
+`.develop/crxhub-cli` or use another host. Git Bash `uname` is `MINGW*` /
+`MSYS*` / `CYGWIN*`, not `windows`, so that glob will not yield
+`windows-x86_64`. On Windows use `scripts/crx-windows-x86_64.exe`.
 
 | Intent | Command |
 |--------|---------|
@@ -41,7 +43,7 @@ $CRX update <owner/repo>
 $CRX list
 $CRX outdate
 $CRX info <owner/repo>
-$CRX cleanup                              # keep=1 (active version only)
+$CRX cleanup                              # keep last 1 version (clap --keep default)
 $CRX uninstall <owner/repo>
 ```
 
