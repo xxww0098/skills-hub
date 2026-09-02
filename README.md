@@ -11,7 +11,7 @@ Installable skills are directories under `skills/` that contain a `SKILL.md`.
 | Category | Skill | Description | Status |
 |:--------:|:------|:------------|:------:|
 | 🤖 Automation | [real-browser](./skills/real-browser) | Attach agent-browser only to an already-running Chrome with a fixed CDP port | ✅ Active |
-| 🖥 Computer Use | [cua-computer-use](./skills/cua-computer-use) | CuaDriver.app + CLI：后台操控本机桌面，或隔离沙箱 | ✅ Active |
+| 🖥 Computer Use | [cua-computer-use](./skills/cua-computer-use) | CuaDriver.app + CLI: background-drive the local desktop, or an isolated sandbox | ✅ Active |
 | 🔧 Extension | [crxhub-cli](./skills/crxhub-cli) | Install/update/remove browser extensions from GitHub Releases | ✅ Active |
 | 📦 Package | [npmjs-cli](./skills/npmjs-cli) | Publish, version, deprecate, and control access on the npm registry | ✅ Active |
 | 🐙 GitHub | [gh-cli](./skills/gh-cli) | GitHub CLI + git: PRs, conflicts, Actions, releases | ✅ Active |
@@ -24,18 +24,29 @@ Installable skills are directories under `skills/` that contain a `SKILL.md`.
 
 ### cua-computer-use
 
-CuaDriver **在 macOS 上是 App**（`/Applications/CuaDriver.app`），用来拿辅助功能 / 屏幕录制权限并跑守护进程。人和 Agent 日常敲的是旁边的 **`cua-driver` CLI**，不是打开这个 App 去点界面。Windows / Linux 没有这种 GUI App，只有 CLI + 后台 daemon。
+On macOS, CuaDriver is an **App** (`/Applications/CuaDriver.app`) used for
+Accessibility / Screen Recording and to run the daemon. Humans and agents type
+the **`cua-driver` CLI**, they do not click that App's UI. Windows / Linux have
+CLI + background daemon only — no GUI App.
 
-人看 [skills/cua-computer-use/README.md](./skills/cua-computer-use/README.md)，Agent 看 [SKILL.md](./skills/cua-computer-use/SKILL.md)。Linux 复跑夹具：`skills/cua-computer-use/tests/linux-smoke.sh`。
+Humans: [skills/cua-computer-use/README.md](./skills/cua-computer-use/README.md).
+Agents: [SKILL.md](./skills/cua-computer-use/SKILL.md).
+Linux replay (needs `DISPLAY` + `cua-driver`, not GitHub-hosted CI):
+`skills/cua-computer-use/tests/linux-smoke.sh`.
 
 ```bash
 CUA=skills/cua-computer-use/scripts/cua-use
 chmod +x "$CUA"
-"$CUA" ensure          # 安装 + 拉起 daemon；存活探测是 status，不要 list_apps
+"$CUA" ensure          # install + start daemon (`status`) + list_windows
 "$CUA" call list_windows '{"on_screen_only": true}'
 ```
 
-macOS 第一次：`"$CUA" grant`（`permissions grant`，不要跑 `cua-driver grant`），再到系统设置里把 CuaDriver 的辅助功能和屏幕录制打开。查权限：`"$CUA" permissions status --json`。
+Liveness is `status`. Never block `ensure` on `list_apps` (macOS hung ~90s
+with CuaDriver.app already serving).
+
+First time on macOS: `"$CUA" grant` (`permissions grant`, never
+`cua-driver grant`), then enable Accessibility and Screen Recording for
+CuaDriver in System Settings. Check: `"$CUA" permissions status --json`.
 
 ## Installation
 

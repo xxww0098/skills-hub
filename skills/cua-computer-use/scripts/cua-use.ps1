@@ -80,7 +80,8 @@ function Invoke-Driver {
 
 function Test-Daemon([string]$Bin) {
     # Proven 2026-08-30 macOS: `call list_apps` hung ~90s even though
-    # CuaDriver.app serve was already up. `status` is daemon liveness.
+    # CuaDriver.app serve was already up. Liveness is `status`. Do not
+    # probe with list_apps.
     & $Bin status 2>$null | Out-Null
     return $LASTEXITCODE -eq 0
 }
@@ -111,6 +112,9 @@ function Cmd-Ensure {
     & $bin --version
     # Do not probe with list_apps — it can hang a minute-plus on macOS.
     & $bin call list_windows '{"on_screen_only": true}'
+    if ($LASTEXITCODE -ne 0) {
+        Die "list_windows probe failed (daemon up but desktop not visible). See: cua-use.ps1 doctor --json"
+    }
 }
 
 function Cmd-Guide {

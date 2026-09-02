@@ -22,4 +22,5 @@ tests/linux-smoke.sh
 ```
 
 Flutter desktop SDK is **not** bundled. `Probe Surface Flutter` is an HTML canvas stand-in.
-Tauri fixture `csp: null` is lab-only — do not copy into product apps.
+
+`tauri/src-tauri/tauri.conf.json` sets `csp: null`. That is lab-only — do not copy it into a production app.

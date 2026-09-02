@@ -19,11 +19,12 @@ CRX="<SKILL_DIR>/scripts/crx-$(uname -s | tr A-Z a-z)-$(uname -m)"
 chmod +x "$CRX"
 ```
 
-Published globs (no `linux-aarch64`; do not invent one):
-`crx-darwin-arm64`, `crx-darwin-x86_64`, `crx-linux-x86_64`,
-`crx-windows-x86_64.exe`. Git Bash `uname` is `MINGW*` / `MSYS*` / `CYGWIN*`,
-not `windows`, so that glob will not yield `windows-x86_64`. On Windows use
-`scripts/crx-windows-x86_64.exe`.
+Shipped: `crx-darwin-arm64`, `crx-darwin-x86_64`, `crx-linux-x86_64`,
+`crx-windows-x86_64.exe`. The glob is `crx-linux-aarch64` on Linux ARM —
+**that binary is not in this repo**. Do not invent it; build from
+`.develop/crxhub-cli` or use another host. Git Bash `uname` is `MINGW*` /
+`MSYS*` / `CYGWIN*`, not `windows`, so that glob will not yield
+`windows-x86_64`. On Windows use `scripts/crx-windows-x86_64.exe`.
 
 | Intent | Command |
 |--------|---------|

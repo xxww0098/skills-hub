@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -15,11 +16,14 @@ SKILL = Path(__file__).resolve().parents[1]
 CUA = Path(os.environ.get("CUA") or (SKILL / "scripts" / "cua-use"))
 
 
-def run_cua(*args: str) -> tuple[int, str]:
+def run_cua(*args: str, timeout: float | None = 30.0) -> tuple[int, str]:
+    # `ensure` waits on daemon start — do not cap that. Every other call is
+    # a single driver RPC and should not hang a minute-plus (list_apps did).
+    if args and args[0] == "ensure":
+        timeout = None
     env = os.environ.copy()
     env.setdefault("DISPLAY", ":1")
     env["PATH"] = os.path.expanduser("~/.local/bin") + ":" + env.get("PATH", "")
-    timeout = None if args[:1] == ("ensure",) else 30
     try:
         p = subprocess.run(
             [str(CUA), *args],
@@ -28,9 +32,13 @@ def run_cua(*args: str) -> tuple[int, str]:
             env=env,
             timeout=timeout,
         )
-    except subprocess.TimeoutExpired as e:
-        out = ((e.stdout or "") + "\n" + (e.stderr or "")).strip()
-        return 124, out or f"timeout after {timeout}s: {' '.join(args)}"
+    except subprocess.TimeoutExpired as exc:
+        pieces = [f"timeout after {timeout}s running {args}"]
+        if exc.stdout:
+            pieces.append(exc.stdout if isinstance(exc.stdout, str) else exc.stdout.decode())
+        if exc.stderr:
+            pieces.append(exc.stderr if isinstance(exc.stderr, str) else exc.stderr.decode())
+        return 124, "\n".join(s.strip() for s in pieces if s and str(s).strip())
     out = (p.stdout or "").strip()
     if p.returncode != 0 and p.stderr:
         out = (out + "\n" + p.stderr.strip()).strip()
@@ -108,13 +116,6 @@ def click_el(pid: int, el: dict, foreground: bool = False) -> tuple[int, object,
     return call("click", payload)
 
 
-def click_xy(pid: int, window_id: int, x: float, y: float, foreground: bool) -> tuple[int, object, str]:
-    payload = {"pid": pid, "window_id": window_id, "x": x, "y": y}
-    if foreground:
-        payload["delivery_mode"] = "foreground"
-    return call("click", payload)
-
-
 def snapshot(pid: int, window_id: int, png: Path | None, query: str | None = None) -> dict:
     payload: dict = {"pid": pid, "window_id": window_id}
     if png:
@@ -138,6 +139,26 @@ def ocr(png: Path) -> str:
     return p.stdout or ""
 
 
+def visible_result_42(*chunks: object) -> bool:
+    """True only if the UI shows 6×7 landed. Click rc==0 is not enough."""
+    parts: list[str] = []
+    for chunk in chunks:
+        if chunk is None:
+            continue
+        if isinstance(chunk, str):
+            parts.append(chunk)
+        else:
+            try:
+                parts.append(json.dumps(chunk, ensure_ascii=False))
+            except TypeError:
+                parts.append(str(chunk))
+    text = "\n".join(parts).lower()
+    compact = re.sub(r"\s+", "", text)
+    if "result=42" in compact or "result:42" in compact:
+        return True
+    return bool(re.search(r"\bresult\s*:\s*42\b", text))
+
+
 def classify(title: str, app_name: str, els: list[dict], degraded: object) -> str:
     app = (app_name or "").lower()
     title_l = title.lower()
@@ -158,6 +179,11 @@ def classify(title: str, app_name: str, els: list[dict], degraded: object) -> st
     if "Probe Increment" in labels:
         return "native-ax"
     return "unknown"
+
+
+def dump_record(out: Path, record: dict) -> None:
+    (out / "record.json").write_text(json.dumps(record, indent=2)[:120_000])
+    print(json.dumps(record, indent=2)[:6000])
 
 
 def main() -> int:
@@ -202,16 +228,20 @@ def main() -> int:
 
     inc = find_el(els, "Probe Increment")
     fg = args.foreground or toolkit == "electron-px"
-    if inc and inc.get("element_token"):
-        rc, data, raw = click_el(pid, inc, foreground=fg)
-        record["click_increment"] = {"rc": rc, "channel": "ax", "data": data, "raw": raw[:1500]}
-    else:
-        rc, data, raw = click_xy(pid, wid, 170, 131, foreground=True)
-        record["click_increment"] = {"rc": rc, "channel": "px", "data": data, "raw": raw[:1500]}
-        # Electron: background is refused — the helper already used foreground.
-        if isinstance(data, dict) and data.get("code") == "background_unavailable":
-            rc, data, raw = click_xy(pid, wid, 170, 131, foreground=True)
-            record["click_increment"] = {"rc": rc, "channel": "px-fg", "data": data, "raw": raw[:1500]}
+    if not (inc and inc.get("element_token")):
+        record["ok_increment"] = False
+        record["click_increment"] = {
+            "channel": "missing-label",
+            "error": "Probe Increment not in AX tree; no per-host PX table",
+        }
+        dump_record(out, record)
+        raise SystemExit(
+            "linux-lab-drive: Probe Increment label missing; "
+            "refusing magic PX 170,131 (no recorded per-host coord table)"
+        )
+
+    rc, data, raw = click_el(pid, inc, foreground=fg)
+    record["click_increment"] = {"rc": rc, "channel": "ax", "data": data, "raw": raw[:1500]}
 
     time.sleep(0.35)
     after = snapshot(pid, wid, out / "after-increment.png")
@@ -223,8 +253,7 @@ def main() -> int:
         and (out / "after-increment.png").stat().st_size > 0
     )
 
-    if args.do_calc and toolkit != "electron-px" and toolkit != "degraded-no-ax":
-        # Paint tab hides the AX keypad; switch back if the control exists.
+    if args.do_calc:
         st0 = snapshot(pid, wid, None)
         els0 = elements_of(st0)
         if find_el(els0, "Probe Canvas") and not find_el(els0, "Probe Key 6"):
@@ -244,17 +273,37 @@ def main() -> int:
             time.sleep(0.15)
         after_calc = snapshot(pid, wid, out / "after-calc.png")
         record["calc"] = calc
-        ocr_text = ocr(out / "after-calc.png")
-        record["ocr_calc"] = ocr_text[:500]
-        record["ok_calc"] = "42" in ocr_text or "result=42" in json.dumps(after_calc)
+        record["ocr_calc"] = ocr(out / "after-calc.png")[:500]
+        record["calc_missing"] = [s["name"] for s in calc if s.get("channel") == "miss"]
+        # Click rc==0 is not success. Need 42 on the result / Probe Log.
+        record["ok_calc"] = (not record["calc_missing"]) and visible_result_42(
+            record["ocr_calc"],
+            after_calc,
+            [e.get("label") for e in elements_of(after_calc)],
+            [e.get("value") for e in elements_of(after_calc)],
+        )
+        dump_record(out, record)
+        if not record["ok_calc"]:
+            return 1
+        return 0
 
-    (out / "record.json").write_text(json.dumps(record, indent=2)[:120_000])
-    print(json.dumps(record, indent=2)[:6000])
-    ok = bool(record.get("ok_increment"))
-    if "calc" in record:
-        ok = ok and bool(record.get("ok_calc"))
-    return 0 if ok else 1
+    dump_record(out, record)
+    return 0 if record.get("ok_increment") else 1
+
+
+def _selftest() -> int:
+    assert visible_result_42("result=42")
+    assert visible_result_42("Result: 42")
+    assert visible_result_42({"log": "hello\nresult=42"})
+    assert not visible_result_42("rc=0")
+    assert not visible_result_42("increment=1")
+    assert not visible_result_42("ok_increment")
+    assert not visible_result_42("")
+    print("linux-lab-drive selftest: ok")
+    return 0
 
 
 if __name__ == "__main__":
+    if sys.argv[1:] == ["--selftest"]:
+        raise SystemExit(_selftest())
     raise SystemExit(main())

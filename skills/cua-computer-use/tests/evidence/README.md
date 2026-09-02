@@ -23,6 +23,7 @@ Re-run: `../linux-smoke.sh`.
 Cua Lab Tauri 2 from this branch (`wry 0.55.1`), CuaDriver.app daemon,
 title `Cua Lab`, `app_name` `cua-lab`, pid 42741, window_id 31594,
 secondary space. Background AX under **AXWebArea** (no PX / foreground)
-was proven 2026-08-30. Screenshots (`macos-tauri-before.png`,
+was proven 2026-08-30. Increment and 6 × 7 → `Result: 42` / `result=42`
+were proven on that host. Screenshots (`macos-tauri-before.png`,
 `macos-tauri-after-inc.png`, `macos-tauri-ax-calc-42.png`) are **not
-in this tree**.
+in this tree** (do not invent empty filenames).

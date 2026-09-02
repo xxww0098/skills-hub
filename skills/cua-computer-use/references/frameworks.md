@@ -202,5 +202,6 @@ CUA call get_window_state '{"pid":PID,"window_id":WID,"screenshot_out_file":"/tm
 ```
 
 Repeatable Linux hosts: `tests/linux-smoke.sh` (GTK required; Electron /
-Tauri / Qt / WebKitGTK when present). macOS Tauri 2 AXWebArea (background
-AX) was proven 2026-08-30; screenshots are not in this tree.
+Tauri / Qt / WebKitGTK when present; needs `DISPLAY` + `cua-driver`).
+macOS Tauri 2 AXWebArea (background AX) was proven 2026-08-30; screenshots
+are not in this tree. See section above.
